@@ -99,8 +99,8 @@ Set `APP_ENV=production`, `APP_DEBUG=false`, and `FRONTEND_URL` to your Vercel U
 ## Testing
 
 ```bash
-cd backend && php artisan test      # 20 feature tests
-cd frontend && npm run lint && npx tsc --noEmit && npm run build
+cd backend && php artisan test      # 26 feature tests
+cd frontend && npm test && npm run lint && npx tsc --noEmit && npm run build
 ```
 
 The backend tests cover:
@@ -121,6 +121,12 @@ The backend tests cover:
 - the CSV export
 - category usage ranking
 - automatic push keys
+- budgets: overall and per-category, by scope, with daily, weekly and monthly breakdown and "safe to spend per day"
+- goals: progress, required weekly and monthly saving, projected finish date
+- insights: monthly cash flow, daily spending, weekday pattern, category changes vs last month
+- statement import: auto-matching (same amount, within 3 days, a transaction used only once), transfers, record-from-statement, ignore, manual link, re-import replaces, privacy between users
+
+`npm test` covers the statement parser on MTN MoMo layouts (amount, fees, e-levy, balance before/after), bank layouts (debit/credit) and signed-amount layouts, plus PDF table reconstruction.
 
 The suite passes on both SQLite and PostgreSQL.
 
@@ -157,6 +163,32 @@ Login and register are rate-limited.
 - **Recorded balance** for an account = opening balance + income − expenses ± transfers. The UI says plainly that this is *not* your real MoMo or bank balance.
 - Periods (today, week, month, custom) are calendar dates in the device's timezone, defaulting to Africa/Accra.
 
+### Plan: budgets and goals
+
+- **Monthly budget** for everything, personal or business, plus optional per-category budgets.
+- Each budget is split into a **daily and weekly amount**. You also see what's left, a "safe to spend per day for the rest of the month" figure, today's and this week's spending against the daily and weekly amounts, and a pace marker showing where even spending would put you.
+- Statuses are always shown with an icon and a label, never colour alone: *On track*, *Spending fast*, *Over budget*.
+- **Goals** have a target and an optional date. Add or take out money, and see how much to put aside each week or month, your projected finish date at recent pace, and a progress chart with a table view.
+
+### Insights
+
+- One filter row (All / Personal / Business, a single business, and 3/6/12 months) controls everything on the page.
+- Stat tiles show average daily spend, projected month spend, savings rate and usual monthly spend.
+- A plain-language "What stands out" list.
+- Charts: **Money in and out** by month (money in above the line, money out below, so it doesn't rely on red vs green, plus a net dot), **daily spending** against your daily budget line, and **spending by day of week**. Every chart has a Table view and keyboard/hover tooltips.
+- Category changes vs the same point last month, and this month's biggest expenses.
+
+### Reconcile (MoMo / bank statements)
+
+1. Plan → Reconcile → Import. Pick the account and a statement file: **CSV, Excel (.xlsx) or PDF**. Password-protected PDFs are supported.
+2. The file is **parsed in the browser**; only the transaction lines go to the server. Columns are detected automatically (MTN-style *AMOUNT / FEES / E-LEVY / BAL BEFORE / BAL AFTER*, bank-style *Debit / Credit*, or a signed amount), and you can fix them before importing. Fees and e-levy can become separate lines.
+3. Each line is matched to a recorded transaction on that account with the same amount, within 3 days. You then see:
+   - **Missing** (on the statement, not in Trackaa): add with one tap, link to something you recorded, or ignore.
+   - **Only here** (in Trackaa, not on the statement).
+   - **Matched**.
+   - Statement vs recorded **totals and closing balance**.
+4. Import one statement per account per month. Re-importing replaces it; deleting a statement never deletes transactions.
+
 ### Quick Add
 
 - **Phones get a built-in number keypad**, so the system keyboard never covers the form. The amount stays pinned at the top and the keypad and Save at the bottom.
@@ -190,4 +222,6 @@ GET    /api/push/key      POST|DELETE /api/push/subscribe
 - **Login tokens are kept in `localStorage`.** They expire after 90 days of not being used. Fine for a personal tool; for extra hardening, switch to cookie-based Sanctum SPA auth.
 - **Offline**: new transactions are queued while offline. Editing or deleting an existing transaction still needs a connection.
 - **Category type can't be changed after creation**, to keep past transactions consistent. Archive the category and create a new one instead.
-- **Deliberately out of scope**: budgets, reports, receipt scanning, bank or MoMo sync, multi-user businesses. The schema (per-user ownership, a separate transfers type, archivable reference data) leaves room for them.
+- **Statement PDFs must contain text.** Scanned or photographed statements aren't read. CSV or Excel exports are the most reliable. Column detection is heuristic, so check the preview.
+- **Goal contributions are tracked separately from transactions.** To record the money moving, also add a transfer to your savings account.
+- **Deliberately out of scope**: receipt scanning, live bank or MoMo sync, multi-user businesses. The schema (per-user ownership, a separate transfers type, archivable reference data) leaves room for them.

@@ -3,7 +3,8 @@
 import useSWR, { useSWRConfig } from "swr";
 import { useCallback, useEffect } from "react";
 import { fetcher, withQuery } from "./api";
-import type { Account, Business, Category, Overview, User } from "./types";
+import { deviceTimezone } from "./dates";
+import type { Account, BudgetsResponse, Business, Category, Goal, Insights, Overview, User } from "./types";
 
 type List<T> = { data: T[] };
 
@@ -47,4 +48,17 @@ export function useOnRefresh(fn: () => void) {
     window.addEventListener(REFRESH_EVENT, fn);
     return () => window.removeEventListener(REFRESH_EVENT, fn);
   }, [fn]);
+}
+
+export function useBudgets(month?: string) {
+  return useSWR<BudgetsResponse>(withQuery("/budgets", { month, tz: deviceTimezone() }), fetcher);
+}
+
+export function useGoals() {
+  const r = useSWR<{ data: Goal[] }>(withQuery("/goals", { tz: deviceTimezone() }), fetcher);
+  return { ...r, goals: r.data?.data ?? [] };
+}
+
+export function useInsights(query: Record<string, string | number | undefined>) {
+  return useSWR<Insights>(withQuery("/insights", { ...query, tz: deviceTimezone() }), fetcher, { keepPreviousData: true });
 }

@@ -26,6 +26,8 @@
   --hero-fg: #ffffff;
   --hero-muted: #9ca3af;
   --hero-line: rgba(255, 255, 255, 0.08);
+  --deemph: #c7ccd4;
+  --grid: #eceef2;
   --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.04);
   --shadow-lg: 0 10px 30px -10px rgba(16, 24, 40, 0.25);
 }
@@ -52,6 +54,8 @@
   --hero-fg: #f3f4f6;
   --hero-muted: #9ca3af;
   --hero-line: rgba(255, 255, 255, 0.07);
+  --deemph: #3b3f48;
+  --grid: #1f2127;
   --shadow: none;
   --shadow-lg: 0 10px 30px -10px rgba(0, 0, 0, 0.6);
 }
@@ -77,6 +81,8 @@
   --color-hero-fg: var(--hero-fg);
   --color-hero-muted: var(--hero-muted);
   --color-hero-line: var(--hero-line);
+  --color-deemph: var(--deemph);
+  --color-grid: var(--grid);
   --shadow-card: var(--shadow);
   --shadow-float: var(--shadow-lg);
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;

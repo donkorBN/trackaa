@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleCheckBig, CloudOff, House, List, Plus, Settings } from "lucide-react";
+import { ChartColumn, CircleCheckBig, CloudOff, FileSpreadsheet, House, List, Plus, Settings, Target } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -12,10 +12,19 @@ import { QuickAddProvider, useQuickAdd } from "./quick-add";
 import { useToast } from "./toast";
 import { cx, Spinner } from "./ui";
 
+// Mobile bottom bar: two either side of the + button.
 const NAV = [
   { href: "/", label: "Overview", icon: House },
   { href: "/transactions", label: "Transactions", icon: List },
-  { href: "/review", label: "Today", icon: CircleCheckBig },
+  { href: "/insights", label: "Insights", icon: ChartColumn },
+  { href: "/plan", label: "Plan", icon: Target },
+];
+
+// Desktop sidebar has room for everything.
+const SIDEBAR = [
+  ...NAV,
+  { href: "/reconcile", label: "Reconcile", icon: FileSpreadsheet },
+  { href: "/review", label: "Today's review", icon: CircleCheckBig },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -72,7 +81,8 @@ function Frame({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { openQuickAdd } = useQuickAdd();
   const pending = useOutboxCount();
-  const isActive = (href: string) => (href === "/" ? pathname === "/" : pathname.startsWith(href));
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : pathname.startsWith(href) || (href === "/plan" && pathname.startsWith("/reconcile"));
 
   // Desktop shortcut: "n" for a new transaction.
   useEffect(() => {
@@ -103,7 +113,7 @@ function Frame({ children }: { children: ReactNode }) {
           <Plus size={18} strokeWidth={2.5} /> New transaction
         </button>
         <nav className="space-y-1">
-          {NAV.map(({ href, label, icon: Icon }) => (
+          {SIDEBAR.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}

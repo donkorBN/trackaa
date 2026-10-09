@@ -55,3 +55,8 @@ export function deviceTimezone(): string {
     return "Africa/Accra";
   }
 }
+
+/** "2026-10" -> "October 2026" */
+export function monthName(period: string): string {
+  return new Date(`${period}-01T00:00:00`).toLocaleDateString("en-GB", { month: "long", year: "numeric" });
+}

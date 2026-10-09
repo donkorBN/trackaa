@@ -32,3 +32,14 @@ export function formatGHS(pesewas: number, opts: { sign?: boolean; compact?: boo
   const prefix = negative ? "−" : opts.sign && pesewas > 0 ? "+" : "";
   return `${prefix}GH₵ ${body}`;
 }
+
+/** Short label for axes and tight spaces: 1250 cedis -> "1.3k". Display only. */
+export function formatShort(pesewas: number): string {
+  const neg = pesewas < 0;
+  const cedis = Math.abs(Math.trunc(pesewas / 100));
+  let s: string;
+  if (cedis >= 1_000_000) s = `${(cedis / 1_000_000).toFixed(cedis >= 10_000_000 ? 0 : 1)}M`;
+  else if (cedis >= 1_000) s = `${(cedis / 1_000).toFixed(cedis >= 10_000 ? 0 : 1)}k`;
+  else s = String(cedis);
+  return (neg ? "−" : "") + s.replace(".0", "");
+}

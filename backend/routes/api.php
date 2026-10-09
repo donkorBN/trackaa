@@ -2,10 +2,14 @@
 
 use App\Http\Controllers\Api\AccountController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\BudgetController;
 use App\Http\Controllers\Api\BusinessController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\GoalController;
+use App\Http\Controllers\Api\InsightsController;
 use App\Http\Controllers\Api\OverviewController;
 use App\Http\Controllers\Api\PushController;
+use App\Http\Controllers\Api\StatementController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Middleware\ExtendTokenLifetime;
 use Illuminate\Support\Facades\Route;
@@ -31,6 +35,22 @@ Route::middleware(['auth:sanctum', ExtendTokenLifetime::class])->group(function 
     Route::apiResource('accounts', AccountController::class)->only(['index', 'store', 'update']);
     Route::apiResource('businesses', BusinessController::class)->only(['index', 'store', 'update']);
     Route::apiResource('categories', CategoryController::class)->only(['index', 'store', 'update']);
+
+    Route::get('/insights', InsightsController::class);
+
+    Route::apiResource('budgets', BudgetController::class)->only(['index', 'store', 'update', 'destroy']);
+
+    Route::apiResource('goals', GoalController::class);
+    Route::post('/goals/{goal}/contributions', [GoalController::class, 'contribute']);
+    Route::delete('/goals/{goal}/contributions/{contribution}', [GoalController::class, 'removeContribution']);
+
+    Route::get('/statements', [StatementController::class, 'index']);
+    Route::post('/statements', [StatementController::class, 'store'])->middleware('throttle:20,1');
+    Route::get('/statements/{statement}', [StatementController::class, 'show']);
+    Route::delete('/statements/{statement}', [StatementController::class, 'destroy']);
+    Route::post('/statements/{statement}/rematch', [StatementController::class, 'rematch']);
+    Route::patch('/statements/{statement}/lines/{line}', [StatementController::class, 'updateLine']);
+    Route::post('/statements/{statement}/lines/{line}/record', [StatementController::class, 'recordLine']);
 
     Route::get('/push/key', [PushController::class, 'key']);
     Route::post('/push/subscribe', [PushController::class, 'subscribe']);

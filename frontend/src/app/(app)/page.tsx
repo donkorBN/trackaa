@@ -1,15 +1,16 @@
 "use client";
 
-import { ArrowDownLeft, ArrowUpRight, ChevronRight, Plus } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, ChevronRight, CircleCheckBig, Plus, Settings } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ReminderBanner } from "@/components/ReminderBanner";
 import { ScopePicker, scopeQuery, type ScopeValue } from "@/components/ScopePicker";
 import { TxRow } from "@/components/TxRow";
 import { useQuickAdd } from "@/components/quick-add";
+import { Meter, meterTone } from "@/components/charts";
 import { Card, cx, ErrorBox, Eyebrow, SectionTitle, Skeleton } from "@/components/ui";
 import { deviceTimezone, greeting, shortDate, ymd } from "@/lib/dates";
-import { useAccounts, useMe, useOverview } from "@/lib/hooks";
+import { useAccounts, useBudgets, useMe, useOverview } from "@/lib/hooks";
 import { formatGHS } from "@/lib/money";
 import type { Overview, Period, Totals } from "@/lib/types";
 import { ACCOUNT_ICON, categoryVisual, IconBubble, Initials } from "@/lib/visuals";
@@ -65,7 +66,23 @@ export default function OverviewPage() {
           </Eyebrow>
           <h1 className="mt-0.5 text-[28px] leading-tight font-bold tracking-tight">Overview</h1>
         </div>
-        <div className="pb-1 text-[13px] text-muted">
+        <div className="flex gap-2 md:hidden">
+          <Link
+            href="/review"
+            aria-label="Today's review"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-surface text-ink"
+          >
+            <CircleCheckBig size={19} />
+          </Link>
+          <Link
+            href="/settings"
+            aria-label="Settings"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-surface text-ink"
+          >
+            <Settings size={19} />
+          </Link>
+        </div>
+        <div className="hidden pb-1 text-[13px] text-muted md:block">
           {new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
         </div>
       </header>
@@ -140,6 +157,8 @@ export default function OverviewPage() {
 
           {/* Secondary period strip: today, or this month when the hero already shows today */}
           <MiniTotals title={period === "today" ? "This month" : "Today"} totals={period === "today" ? data.month : data.today} />
+
+          <BudgetCard />
 
           {!data.has_transactions && (
             <Card className="text-center">
@@ -342,5 +361,46 @@ function Accounts() {
       </div>
       <p className="mt-2 px-1 text-xs text-subtle">Opening balance + what you&apos;ve recorded. Not linked to your real MoMo or bank.</p>
     </section>
+  );
+}
+
+function BudgetCard() {
+  const { data } = useBudgets();
+  if (!data) return null;
+  const b = data.data.find((x) => !x.category && x.scope === "all") ?? data.data.find((x) => !x.category);
+  if (!b) {
+    return (
+      <Link
+        href="/plan"
+        className="flex items-center justify-between gap-3 rounded-3xl border border-dashed border-line px-5 py-4 text-sm hover:bg-surface"
+      >
+        <span>
+          <span className="font-semibold">Set a monthly budget</span>
+          <span className="block text-muted">See what you can spend each day and week</span>
+        </span>
+        <ChevronRight size={18} className="shrink-0 text-subtle" />
+      </Link>
+    );
+  }
+  const tone = meterTone(b.spent, b.amount, b.expected_by_now);
+  return (
+    <Link href="/plan" className="block rounded-3xl border border-line bg-surface p-5 shadow-card hover:bg-surface-2/40">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-[13px] text-muted">Budget left this month</span>
+        <span className="text-[13px] text-muted">of {formatGHS(b.amount, { compact: true })}</span>
+      </div>
+      <div className={cx("mt-1 text-[22px] font-bold tracking-tight", b.remaining < 0 && "text-expense")}>
+        {b.remaining < 0 ? `${formatGHS(-b.remaining)} over` : formatGHS(b.remaining)}
+      </div>
+      <div className="mt-3">
+        <Meter value={b.spent} max={b.amount} tone={tone} pace={b.expected_by_now} height={8} />
+      </div>
+      {b.daily_allowance !== null && b.remaining > 0 && (
+        <div className="mt-3 text-[13px] text-muted">
+          About <span className="font-semibold text-ink">{formatGHS(b.daily_allowance)}</span> a day for the next {data.days_left} days ·
+          today {formatGHS(b.spent_today ?? 0, { compact: true })} of {formatGHS(b.daily, { compact: true })}
+        </div>
+      )}
+    </Link>
   );
 }
