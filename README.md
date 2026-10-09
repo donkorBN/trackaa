@@ -57,7 +57,8 @@ Open http://localhost:3000, create an account, and tap **+**.
 | `APP_URL` | Public URL of the API |
 | `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` | Database (`sqlite`, `mysql` or `pgsql`) |
 | `FRONTEND_URL` | Frontend origin(s) allowed by CORS, comma-separated, e.g. `https://trackaa.vercel.app` |
-| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | *Optional.* Enables phone push reminders. Generate with `php artisan webpush:vapid` |
+| `MAIL_MAILER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_ADDRESS` | Sends password-reset emails. Any SMTP provider works (Resend, Mailgun, Brevo, Gmail SMTP). Locally `MAIL_MAILER=log` writes the email to `storage/logs/laravel.log` |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | *Optional.* Push-reminder keys. If unset, a key pair is generated automatically and kept in `storage/app/private/vapid.json`. Set them explicitly (`php artisan webpush:vapid`) on hosts with a temporary filesystem |
 
 ### frontend/.env.local
 
@@ -89,14 +90,16 @@ Set `APP_ENV=production`, `APP_DEBUG=false`, and `FRONTEND_URL` to your Vercel U
 * * * * * cd /path/to/backend && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-(Laravel Cloud and Forge have a toggle for this.) Without VAPID keys or the scheduler, the app falls back to an in-app reminder banner.
+(Laravel Cloud and Forge have a toggle for this.) Without the scheduler, you still get the in-app reminder banner.
+
+**Password reset emails** need the `MAIL_*` variables set. There is no email verification, by design.
 
 ---
 
 ## Testing
 
 ```bash
-cd backend && php artisan test      # 14 feature tests
+cd backend && php artisan test      # 20 feature tests
 cd frontend && npm run lint && npx tsc --noEmit && npm run build
 ```
 
@@ -112,6 +115,12 @@ The backend tests cover:
 - validation (zero amounts, a category that doesn't match the type)
 - archived categories keeping their history
 - **one user cannot read, edit or delete another user's data, or attach records to another user's accounts or categories**
+- the password flows: forgot, reset (which signs out other devices) and change
+- login sessions that expire after 90 days without use and extend themselves with use
+- the server-side end-of-day review
+- the CSV export
+- category usage ranking
+- automatic push keys
 
 The suite passes on both SQLite and PostgreSQL.
 
@@ -150,11 +159,13 @@ Login and register are rate-limited.
 
 ### Quick Add
 
-- The amount field is focused when the sheet opens.
-- Your last type, account, scope, business and category are remembered on each device.
-- The Enter key submits.
+- **Phones get a built-in number keypad**, so the system keyboard never covers the form. The amount stays pinned at the top and the keypad and Save at the bottom.
+- **Categories are icon tiles, sorted by how often you've used them** in the last 90 days.
+- Every new entry starts as **Expense**, so income is always a deliberate tap. Your last account, scope, business and category per type are remembered.
+- On desktop you type the amount directly. Press **N** anywhere to open Quick Add, and **Enter** saves.
 - Every submit carries a `client_ref` UUID, so a double tap or a network retry can't create duplicates.
 - After saving, a toast offers **Undo**.
+- **Offline**: with no connection, the transaction is kept on the phone and synced automatically when you're back online. The same `client_ref` makes the retry safe.
 
 ### API
 
@@ -172,12 +183,11 @@ GET    /api/push/key      POST|DELETE /api/push/subscribe
 
 ---
 
-## Known limitations (v1)
+## Known limitations
 
-- **Push reminders need setup**: VAPID keys plus the scheduler cron. On iPhone, Web Push only works once the app is added to the Home Screen (iOS 16.4+). Everywhere else you get the in-app banner after your reminder time.
-- **The "reviewed today" flag is stored per device**, not on the server.
-- **Auth tokens are kept in `localStorage` and don't expire** until you log out. Fine for a personal tool. For extra hardening, set `SANCTUM_EXPIRATION` or move to cookie-based Sanctum SPA auth.
-- **No password reset or email verification flow yet.** Laravel has both built in when you want to add them.
-- **Offline**: the app shell loads offline, but recording a transaction needs a connection. There's no offline queue yet.
+- **Push reminders need the scheduler cron** on the API host. On iPhone, Web Push also requires adding the app to the Home Screen (iOS 16.4+). Otherwise you get the in-app banner after your reminder time.
+- **Password-reset emails need an SMTP provider** configured (`MAIL_*`).
+- **Login tokens are kept in `localStorage`.** They expire after 90 days of not being used. Fine for a personal tool; for extra hardening, switch to cookie-based Sanctum SPA auth.
+- **Offline**: new transactions are queued while offline. Editing or deleting an existing transaction still needs a connection.
 - **Category type can't be changed after creation**, to keep past transactions consistent. Archive the category and create a new one instead.
-- **Deliberately out of scope for v1**: budgets, reports, receipt scanning, bank or MoMo sync, multi-user businesses. The schema (per-user ownership, a separate transfers type, archivable reference data) leaves room for them.
+- **Deliberately out of scope**: budgets, reports, receipt scanning, bank or MoMo sync, multi-user businesses. The schema (per-user ownership, a separate transfers type, archivable reference data) leaves room for them.

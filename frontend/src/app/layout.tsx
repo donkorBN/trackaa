@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Providers } from "@/components/Providers";
+import { themeBootScript } from "@/lib/theme";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -8,22 +9,23 @@ export const metadata: Metadata = {
   applicationName: "Trackaa",
   appleWebApp: { capable: true, title: "Trackaa", statusBarStyle: "default" },
   icons: { icon: "/icon-192.png", apple: "/apple-touch-icon.png" },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f6f7f9" },
-    { media: "(prefers-color-scheme: dark)", color: "#0d0f12" },
-  ],
+  themeColor: "#f4f5f7",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body className="antialiased">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+      </head>
+      <body>
         <Providers>{children}</Providers>
       </body>
     </html>

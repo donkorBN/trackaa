@@ -4,14 +4,15 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\PushSubscription;
+use App\Services\VapidKeys;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class PushController extends Controller
 {
-    public function key(): JsonResponse
+    public function key(VapidKeys $vapid): JsonResponse
     {
-        return response()->json(['public_key' => config('services.webpush.public_key') ?: null]);
+        return response()->json(['public_key' => $vapid->get()['public_key'] ?? null]);
     }
 
     public function subscribe(Request $request): JsonResponse

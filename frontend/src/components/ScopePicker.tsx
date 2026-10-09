@@ -12,7 +12,7 @@ export interface ScopeValue {
 export function ScopePicker({ value, onChange }: { value: ScopeValue; onChange: (v: ScopeValue) => void }) {
   const { businesses } = useBusinesses();
   return (
-    <div className="space-y-2">
+    <div className="space-y-2.5">
       <Segmented
         value={value.scope}
         onChange={(scope) => onChange({ scope, businessId: null })}

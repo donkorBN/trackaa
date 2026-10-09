@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\Archivable;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable(['name', 'transaction_type'])]
 class Category extends Model
@@ -14,5 +15,10 @@ class Category extends Model
     protected function casts(): array
     {
         return ['archived_at' => 'datetime'];
+    }
+
+    public function transactions(): HasMany
+    {
+        return $this->hasMany(Transaction::class);
     }
 }

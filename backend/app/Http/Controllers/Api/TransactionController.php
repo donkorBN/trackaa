@@ -11,6 +11,7 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TransactionController extends Controller
 {
@@ -35,6 +36,37 @@ class TransactionController extends Controller
             'meta' => ['current_page' => $page->currentPage(), 'last_page' => $page->lastPage(), 'total' => $page->total()],
             'days' => $this->dailyTotals($q, collect($page->items()), $tz),
         ]);
+    }
+
+    /** CSV of every transaction matching the current filters (same params as index). */
+    public function export(Request $request, Ledger $ledger): StreamedResponse
+    {
+        $user = $request->user();
+        $tz = Period::timezone($request->query('tz'), $user->timezone);
+        $q = $ledger->filtered($user, $request);
+        if ($request->filled('from') || $request->filled('to')) {
+            $ledger->within($q, Period::dates($request->query('from'), $request->query('to'), $tz));
+        }
+        $q->with(self::RELATIONS)->orderByDesc('occurred_at')->orderByDesc('id');
+
+        return response()->streamDownload(function () use ($q, $tz) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF"); // UTF-8 BOM so Excel shows GH₵ and names correctly
+            fputcsv($out, ['Date', 'Time', 'Type', 'Amount (GHS)', 'Category', 'Personal/Business', 'Business', 'Account', 'To account', 'Note']);
+            $q->chunk(500, function ($rows) use ($out, $tz) {
+                foreach ($rows as $t) {
+                    $local = $t->occurred_at->setTimezone($tz);
+                    $amount = intdiv($t->amount, 100).'.'.str_pad((string) ($t->amount % 100), 2, '0', STR_PAD_LEFT);
+                    fputcsv($out, [
+                        $local->toDateString(), $local->format('H:i'), ucfirst($t->type),
+                        ($t->type === 'expense' ? '-' : '').$amount,
+                        $t->category?->name, ucfirst($t->scope), $t->business?->name,
+                        $t->account?->name, $t->toAccount?->name, $t->description,
+                    ]);
+                }
+            });
+            fclose($out);
+        }, 'trackaa-transactions-'.now($tz)->format('Y-m-d').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     public function show(Request $request, Transaction $transaction): JsonResponse

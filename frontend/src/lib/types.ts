@@ -9,6 +9,7 @@ export interface User {
   timezone: string;
   reminder_enabled: boolean;
   reminder_time: string; // "HH:MM"
+  last_reviewed_on: string | null; // Y-m-d
 }
 
 export interface Account {
@@ -31,6 +32,7 @@ export interface Category {
   name: string;
   transaction_type: "income" | "expense";
   archived: boolean;
+  usage_count: number;
 }
 
 export interface Ref {

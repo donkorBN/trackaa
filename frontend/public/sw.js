@@ -1,6 +1,6 @@
 // Trackaa service worker: makes the app installable, keeps the shell available
 // offline, and shows the daily reminder push notification.
-const CACHE = "trackaa-v1";
+const CACHE = "trackaa-v2";
 
 self.addEventListener("install", () => self.skipWaiting());
 

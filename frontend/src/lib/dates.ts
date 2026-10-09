@@ -16,9 +16,8 @@ export function dayLabel(key: string): string {
   if (key === today) return "Today";
   if (key === ymd(y)) return "Yesterday";
   const [yy, mm, dd] = key.split("-").map(Number);
-  const d = new Date(yy, mm - 1, dd);
-  return d.toLocaleDateString("en-GB", {
-    weekday: "short",
+  return new Date(yy, mm - 1, dd).toLocaleDateString("en-GB", {
+    weekday: "long",
     day: "numeric",
     month: "short",
     year: yy === new Date().getFullYear() ? undefined : "numeric",
@@ -34,16 +33,25 @@ export function dateTimeLabel(iso: string): string {
   return `${dayLabel(ymd(d))}, ${timeLabel(iso)}`;
 }
 
+/** "2026-10-01" -> "1 Oct" (adds the year when it's not this year) */
+export function shortDate(key: string): string {
+  const [y, m, d] = key.split("-").map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: y === new Date().getFullYear() ? undefined : "numeric",
+  });
+}
+
+export function greeting(): string {
+  const h = new Date().getHours();
+  return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening";
+}
+
 export function deviceTimezone(): string {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || "Africa/Accra";
   } catch {
     return "Africa/Accra";
   }
-}
-
-/** "2026-10-01" -> "1 Oct 2026" */
-export function shortDate(key: string): string {
-  const [y, m, d] = key.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }

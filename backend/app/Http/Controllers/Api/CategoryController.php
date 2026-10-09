@@ -12,7 +12,9 @@ class CategoryController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $q = $request->user()->categories()->orderBy('id');
+        // usage_count (last 90 days) lets Quick Add put the categories you use most first.
+        $q = $request->user()->categories()->orderBy('id')
+            ->withCount(['transactions as usage_count' => fn ($t) => $t->where('occurred_at', '>=', now()->subDays(90))]);
         if (! $request->boolean('include_archived')) {
             $q->active();
         }
@@ -49,6 +51,12 @@ class CategoryController extends Controller
 
     private function present(Category $c): array
     {
-        return ['id' => $c->id, 'name' => $c->name, 'transaction_type' => $c->transaction_type, 'archived' => $c->isArchived()];
+        return [
+            'id' => $c->id,
+            'name' => $c->name,
+            'transaction_type' => $c->transaction_type,
+            'archived' => $c->isArchived(),
+            'usage_count' => (int) ($c->usage_count ?? 0),
+        ];
     }
 }

@@ -1,22 +1,30 @@
 "use client";
 
+import { ArrowDownLeft, ArrowUpRight, ChevronRight, Plus } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ReminderBanner } from "@/components/ReminderBanner";
 import { ScopePicker, scopeQuery, type ScopeValue } from "@/components/ScopePicker";
-import { InOut, NetFigure, TotalsCard } from "@/components/Totals";
 import { TxRow } from "@/components/TxRow";
 import { useQuickAdd } from "@/components/quick-add";
-import { Card, ErrorBox, Input, Segmented, Skeleton, cx } from "@/components/ui";
-import { deviceTimezone, shortDate, ymd } from "@/lib/dates";
-import { useAccounts, useOverview } from "@/lib/hooks";
+import { Card, cx, ErrorBox, Eyebrow, SectionTitle, Skeleton } from "@/components/ui";
+import { deviceTimezone, greeting, shortDate, ymd } from "@/lib/dates";
+import { useAccounts, useMe, useOverview } from "@/lib/hooks";
 import { formatGHS } from "@/lib/money";
-import type { Period } from "@/lib/types";
+import type { Overview, Period, Totals } from "@/lib/types";
+import { ACCOUNT_ICON, categoryVisual, IconBubble, Initials } from "@/lib/visuals";
 
-const PERIOD_LABEL: Record<Period, string> = { today: "Today", week: "This week", month: "This month", custom: "Custom range" };
+const PERIODS: { value: Period; label: string }[] = [
+  { value: "today", label: "Today" },
+  { value: "week", label: "Week" },
+  { value: "month", label: "Month" },
+  { value: "custom", label: "Custom" },
+];
+const PERIOD_NAME: Record<Period, string> = { today: "Today", week: "This week", month: "This month", custom: "Custom range" };
 
 export default function OverviewPage() {
   const { openQuickAdd } = useQuickAdd();
+  const { data: me } = useMe();
   const [scope, setScope] = useState<ScopeValue>({ scope: "all", businessId: null });
   const [period, setPeriod] = useState<Period>("month");
   const [range, setRange] = useState(() => {
@@ -41,34 +49,112 @@ export default function OverviewPage() {
     }
   }, [openQuickAdd]);
 
-  const maxCat = Math.max(1, ...(data?.categories.map((c) => c.total) ?? [1]));
+  const rangeLabel = data
+    ? data.period.from === data.period.to
+      ? shortDate(data.period.from)
+      : `${shortDate(data.period.from)} – ${shortDate(data.period.to)}`
+    : "";
 
   return (
-    <div className="space-y-5">
-      <h1 className="text-2xl font-bold tracking-tight">Overview</h1>
+    <div className="space-y-6">
+      <header className="flex items-end justify-between gap-3 pt-1">
+        <div>
+          <Eyebrow>
+            {greeting()}
+            {me ? `, ${me.name.split(" ")[0]}` : ""}
+          </Eyebrow>
+          <h1 className="mt-0.5 text-[28px] leading-tight font-bold tracking-tight">Overview</h1>
+        </div>
+        <div className="pb-1 text-[13px] text-muted">
+          {new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
+        </div>
+      </header>
+
       <ReminderBanner />
       <ScopePicker value={scope} onChange={setScope} />
 
       {error && <ErrorBox error={error} onRetry={() => mutate()} />}
 
       {isLoading && !data ? (
-        <div className="grid gap-3 sm:grid-cols-2">
-          <Skeleton className="h-36" />
-          <Skeleton className="h-36" />
+        <div className="space-y-4">
+          <Skeleton className="h-56" />
+          <Skeleton className="h-24" />
+          <Skeleton className="h-64" />
         </div>
       ) : data ? (
         <>
+          {/* Hero */}
+          <section className="rounded-[28px] bg-hero p-5 text-hero-fg shadow-float">
+            <div className="flex rounded-2xl bg-white/[0.06] p-1" role="tablist">
+              {PERIODS.map((p) => (
+                <button
+                  key={p.value}
+                  type="button"
+                  role="tab"
+                  aria-selected={period === p.value}
+                  onClick={() => setPeriod(p.value)}
+                  className={cx(
+                    "h-8 flex-1 rounded-xl text-xs font-semibold transition",
+                    period === p.value ? "bg-white text-[#0c0e12]" : "text-hero-muted hover:text-hero-fg",
+                  )}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            {period === "custom" && (
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {(["from", "to"] as const).map((k) => (
+                  <input
+                    key={k}
+                    type="date"
+                    aria-label={k === "from" ? "From" : "To"}
+                    value={range[k]}
+                    max={k === "from" ? range.to : undefined}
+                    min={k === "to" ? range.from : undefined}
+                    onChange={(e) => setRange({ ...range, [k]: e.target.value })}
+                    className="h-10 rounded-xl border border-hero-line bg-white/[0.06] px-3 text-sm text-hero-fg [color-scheme:dark] outline-none"
+                  />
+                ))}
+              </div>
+            )}
+
+            <div className="mt-5 text-[13px] text-hero-muted">
+              Net cash flow · {PERIOD_NAME[period]} <span className="opacity-70">({rangeLabel})</span>
+            </div>
+            <div
+              className={cx(
+                "tabular mt-1 text-[40px] leading-none font-bold tracking-tight",
+                data.period.net > 0 && "text-[#4ade80]",
+                data.period.net < 0 && "text-[#fb7185]",
+              )}
+            >
+              {formatGHS(data.period.net, { sign: true })}
+            </div>
+
+            <div className="mt-5 grid grid-cols-2 gap-2">
+              <HeroStat label="Money in" value={data.period.income} kind="in" />
+              <HeroStat label="Money out" value={data.period.expense} kind="out" />
+            </div>
+          </section>
+
+          {/* Secondary period strip: today, or this month when the hero already shows today */}
+          <MiniTotals title={period === "today" ? "This month" : "Today"} totals={period === "today" ? data.month : data.today} />
+
           {!data.has_transactions && (
             <Card className="text-center">
-              <div className="py-4">
-                <div className="text-base font-semibold">Record your first transaction</div>
+              <div className="py-3">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-2">
+                  <Plus size={22} />
+                </div>
+                <div className="mt-3 font-semibold">Record your first transaction</div>
                 <p className="mx-auto mt-1 max-w-xs text-sm text-muted">
-                  Tap + whenever money comes in or goes out. It takes a few seconds.
+                  Tap + whenever money comes in or goes out. It takes about five seconds.
                 </p>
                 <button
                   type="button"
                   onClick={openQuickAdd}
-                  className="mt-4 rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-fg"
+                  className="mt-4 h-10 rounded-xl bg-accent px-5 text-sm font-semibold text-accent-fg"
                 >
                   Add a transaction
                 </button>
@@ -76,101 +162,47 @@ export default function OverviewPage() {
             </Card>
           )}
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <TotalsCard title="Today" totals={data.today} />
-            <TotalsCard title="This month" totals={data.month} />
-          </div>
+          <Spending data={data} period={period} range={range} />
 
-          {/* Breakdown for a chosen period */}
-          <section className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold">Where the money went</h2>
-            </div>
-            <Segmented
-              size="sm"
-              value={period}
-              onChange={setPeriod}
-              options={[
-                { value: "today", label: "Today" },
-                { value: "week", label: "Week" },
-                { value: "month", label: "Month" },
-                { value: "custom", label: "Custom" },
-              ]}
-            />
-            {period === "custom" && (
-              <div className="grid grid-cols-2 gap-2">
-                <Input type="date" value={range.from} max={range.to} onChange={(e) => setRange({ ...range, from: e.target.value })} aria-label="From" />
-                <Input type="date" value={range.to} min={range.from} onChange={(e) => setRange({ ...range, to: e.target.value })} aria-label="To" />
-              </div>
-            )}
-
-            <Card>
-              <div className="text-xs font-semibold uppercase tracking-wide text-muted">
-                {PERIOD_LABEL[period]} · {data.period.from === data.period.to ? shortDate(data.period.from) : `${shortDate(data.period.from)} – ${shortDate(data.period.to)}`}
-              </div>
-              <div className="mt-1">
-                <NetFigure value={data.period.net} size="md" />
-              </div>
-              <InOut totals={data.period} />
-
-              <div className="mt-5 text-xs font-semibold uppercase tracking-wide text-muted">Spending by category</div>
-              {data.categories.length === 0 ? (
-                <p className="mt-2 text-sm text-muted">No spending recorded in this period.</p>
-              ) : (
-                <ul className="mt-3 space-y-3">
-                  {data.categories.map((c) => (
-                    <li key={c.id}>
-                      <Link
-                        href={`/transactions?category_id=${c.id}&period=${period}${period === "custom" ? `&from=${range.from}&to=${range.to}` : ""}`}
-                        className="block"
-                      >
-                        <div className="flex justify-between text-sm">
-                          <span>{c.name}</span>
-                          <span className="tabular font-medium">{formatGHS(c.total)}</span>
-                        </div>
-                        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-2">
-                          <div className="h-full rounded-full bg-expense/70" style={{ width: `${(c.total / maxCat) * 100}%` }} />
-                        </div>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Card>
-
-            {scope.scope !== "personal" && data.businesses.length > 0 && (
-              <Card flush>
-                <div className="px-4 pt-4 text-xs font-semibold uppercase tracking-wide text-muted">Businesses · {PERIOD_LABEL[period].toLowerCase()}</div>
-                <ul className="mt-2 divide-y divide-line">
-                  {data.businesses.map((b) => (
-                    <li key={b.id ?? "none"} className="flex items-center justify-between gap-3 px-4 py-3">
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-medium">{b.name}</div>
-                        <div className="tabular text-xs text-muted">
-                          <span className="text-income">{formatGHS(b.income)}</span> in · <span className="text-expense">{formatGHS(b.expense)}</span> out
-                        </div>
+          {scope.scope !== "personal" && data.businesses.length > 0 && (
+            <section>
+              <SectionTitle>Businesses</SectionTitle>
+              <Card flush className="divide-y divide-line overflow-hidden">
+                {data.businesses.map((b) => (
+                  <div key={b.id ?? "none"} className="flex items-center gap-3 px-4 py-3.5">
+                    <Initials name={b.name} size={40} />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-[15px] font-medium">{b.name}</div>
+                      <div className="tabular mt-0.5 text-xs text-muted">
+                        <span className={b.income > 0 ? "text-income" : ""}>{formatGHS(b.income, { compact: true })}</span> in ·{" "}
+                        {formatGHS(b.expense, { compact: true })} out
                       </div>
-                      <div className={cx("tabular shrink-0 text-sm font-semibold", b.net > 0 ? "text-income" : b.net < 0 ? "text-expense" : "")}>
-                        {formatGHS(b.net, { sign: true })}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                    </div>
+                    <div
+                      className={cx("tabular shrink-0 text-[15px] font-semibold", b.net > 0 && "text-income", b.net < 0 && "text-expense")}
+                    >
+                      {formatGHS(b.net, { sign: true })}
+                    </div>
+                  </div>
+                ))}
               </Card>
-            )}
-          </section>
+            </section>
+          )}
 
-          <AccountsCard />
+          <Accounts />
 
           <section>
-            <div className="mb-2 flex items-center justify-between">
-              <h2 className="text-base font-semibold">Recent</h2>
-              <Link href="/transactions" className="text-sm font-medium text-muted hover:text-ink">
-                See all →
-              </Link>
-            </div>
+            <SectionTitle
+              action={
+                <Link href="/transactions" className="flex items-center text-[13px] font-medium text-muted hover:text-ink">
+                  See all <ChevronRight size={16} />
+                </Link>
+              }
+            >
+              Recent
+            </SectionTitle>
             {data.recent.length === 0 ? (
-              <p className="text-sm text-muted">Nothing recorded yet{scope.scope !== "all" ? " for this selection" : ""}.</p>
+              <Card className="text-sm text-muted">Nothing recorded yet{scope.scope !== "all" ? " for this selection" : ""}.</Card>
             ) : (
               <Card flush className="divide-y divide-line overflow-hidden">
                 {data.recent.map((tx) => (
@@ -185,27 +217,130 @@ export default function OverviewPage() {
   );
 }
 
-function AccountsCard() {
+function HeroStat({ label, value, kind }: { label: string; value: number; kind: "in" | "out" }) {
+  const Icon = kind === "in" ? ArrowDownLeft : ArrowUpRight;
+  return (
+    <div className="rounded-2xl bg-white/[0.06] p-3">
+      <div className="flex items-center gap-1.5 text-xs text-hero-muted">
+        <span
+          className={cx(
+            "flex h-5 w-5 items-center justify-center rounded-full",
+            kind === "in" ? "bg-[#4ade80]/15 text-[#4ade80]" : "bg-[#fb7185]/15 text-[#fb7185]",
+          )}
+        >
+          <Icon size={13} strokeWidth={2.5} />
+        </span>
+        {label}
+      </div>
+      <div className="tabular mt-1.5 text-[17px] font-semibold tracking-tight">{formatGHS(value)}</div>
+    </div>
+  );
+}
+
+function MiniTotals({ title, totals }: { title: string; totals: Totals }) {
+  return (
+    <Card flush className="grid grid-cols-3 divide-x divide-line">
+      {[
+        { label: `${title} in`, value: formatGHS(totals.income), cls: "text-income" },
+        { label: `${title} out`, value: formatGHS(totals.expense), cls: "text-ink" },
+        {
+          label: "Net",
+          value: formatGHS(totals.net, { sign: true }),
+          cls: totals.net > 0 ? "text-income" : totals.net < 0 ? "text-expense" : "",
+        },
+      ].map((s) => (
+        <div key={s.label} className="px-4 py-3.5">
+          <div className="truncate text-xs text-muted">{s.label}</div>
+          <div className={cx("tabular mt-1 truncate text-[15px] font-semibold tracking-tight", s.cls)}>{s.value}</div>
+        </div>
+      ))}
+    </Card>
+  );
+}
+
+function Spending({ data, period, range }: { data: Overview; period: Period; range: { from: string; to: string } }) {
+  const total = data.categories.reduce((s, c) => s + c.total, 0);
+  const qs = `period=${period}${period === "custom" ? `&from=${range.from}&to=${range.to}` : ""}`;
+  return (
+    <section>
+      <SectionTitle action={total > 0 && <span className="tabular text-[13px] text-muted">{formatGHS(total)}</span>}>
+        Where your money went
+      </SectionTitle>
+      {data.categories.length === 0 ? (
+        <Card className="text-sm text-muted">No spending recorded for {PERIOD_NAME[period].toLowerCase()}.</Card>
+      ) : (
+        <Card flush className="overflow-hidden">
+          {/* Proportion bar */}
+          <div className="px-4 pt-4">
+            <div className="flex h-2 gap-0.5 overflow-hidden rounded-full">
+              {data.categories.slice(0, 8).map((c) => (
+                <div
+                  key={c.id}
+                  className="h-2 first:rounded-l-full last:rounded-r-full"
+                  style={{ width: `${(c.total / total) * 100}%`, background: categoryVisual(c.name).color, minWidth: 4 }}
+                />
+              ))}
+            </div>
+          </div>
+          <ul className="mt-2 divide-y divide-line">
+            {data.categories.map((c) => {
+              const v = categoryVisual(c.name);
+              const share = (c.total / total) * 100;
+              const pct = share < 1 ? "<1" : Math.round(share);
+              return (
+                <li key={c.id}>
+                  <Link href={`/transactions?category_id=${c.id}&${qs}`} className="flex items-center gap-3 px-4 py-3 hover:bg-surface-2">
+                    <IconBubble Icon={v.Icon} color={v.color} size={36} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[15px] font-medium">{c.name}</span>
+                      <span className="block text-xs text-muted">{pct}% of spending</span>
+                    </span>
+                    <span className="tabular shrink-0 text-[15px] font-semibold">{formatGHS(c.total)}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+      )}
+    </section>
+  );
+}
+
+function Accounts() {
   const { data, accounts } = useAccounts();
   if (!data || accounts.length === 0) return null;
-  const total = data.total_balance;
   return (
-    <Card>
-      <div className="flex items-baseline justify-between">
-        <div className="text-xs font-semibold uppercase tracking-wide text-muted">Recorded balance</div>
-        <div className="tabular text-lg font-bold">{formatGHS(total)}</div>
+    <section>
+      <SectionTitle
+        action={
+          <Link href="/settings#accounts" className="flex items-center text-[13px] font-medium text-muted hover:text-ink">
+            Manage <ChevronRight size={16} />
+          </Link>
+        }
+      >
+        Accounts
+      </SectionTitle>
+      <div className="no-scrollbar -mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-1 md:mx-0 md:grid md:grid-cols-[repeat(auto-fill,minmax(10rem,1fr))] md:px-0">
+        <div className="w-40 shrink-0 snap-start rounded-3xl bg-surface-2 p-4 md:w-auto">
+          <div className="text-xs text-muted">Total recorded</div>
+          <div className="tabular mt-6 text-[17px] font-bold tracking-tight">{formatGHS(data.total_balance)}</div>
+        </div>
+        {accounts.map((a) => {
+          const Icon = ACCOUNT_ICON[a.account_type];
+          return (
+            <div key={a.id} className="w-40 shrink-0 snap-start rounded-3xl border border-line bg-surface p-4 shadow-card md:w-auto">
+              <div className="flex items-center gap-2 text-xs text-muted">
+                <Icon size={15} /> <span className="truncate">{a.name}</span>
+              </div>
+              <div className={cx("tabular mt-6 text-[17px] font-semibold tracking-tight", a.balance < 0 && "text-expense")}>
+                {formatGHS(a.balance)}
+              </div>
+            </div>
+          );
+        })}
       </div>
-      <ul className="mt-3 space-y-1.5 text-sm">
-        {accounts.map((a) => (
-          <li key={a.id} className="flex justify-between">
-            <span className="text-muted">{a.name}</span>
-            <span className={cx("tabular font-medium", a.balance < 0 && "text-expense")}>{formatGHS(a.balance)}</span>
-          </li>
-        ))}
-      </ul>
-      <p className="mt-3 text-xs text-muted">
-        Opening balances plus what you&apos;ve recorded here. Not synced with your real MoMo or bank balance. Set opening balances in Settings.
-      </p>
-    </Card>
+      <p className="mt-2 px-1 text-xs text-subtle">Opening balance + what you&apos;ve recorded. Not linked to your real MoMo or bank.</p>
+    </section>
   );
 }

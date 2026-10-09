@@ -72,3 +72,22 @@ export async function api<T = unknown>(path: string, init: { method?: string; bo
 }
 
 export const fetcher = <T,>(path: string) => api<T>(path);
+
+/** Download a file from an authenticated endpoint (e.g. CSV export). */
+export async function apiDownload(path: string, fallbackName: string): Promise<void> {
+  const token = getToken();
+  let res: Response;
+  try {
+    res = await fetch(BASE + path, { headers: { Accept: "text/csv", ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
+  } catch {
+    throw new ApiError("Can't reach the server. Check your connection and try again.", 0);
+  }
+  if (!res.ok) throw new ApiError(`Export failed (${res.status})`, res.status);
+  const name = /filename="?([^";]+)"?/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? fallbackName;
+  const url = URL.createObjectURL(await res.blob());
+  const a = Object.assign(document.createElement("a"), { href: url, download: name });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}

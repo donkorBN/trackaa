@@ -25,6 +25,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'reminder_enabled' => 'boolean',
             'last_reminded_on' => 'date',
+            'last_reviewed_on' => 'date',
         ];
     }
 
@@ -62,6 +63,7 @@ class User extends Authenticatable
             'timezone' => $this->timezone,
             'reminder_enabled' => (bool) $this->reminder_enabled,
             'reminder_time' => $this->reminder_time,
+            'last_reviewed_on' => $this->last_reviewed_on?->toDateString(),
         ];
     }
 }

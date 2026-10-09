@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
+use App\Services\VapidKeys;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Minishlink\WebPush\Subscription;
@@ -14,11 +15,11 @@ class SendDailyReminders extends Command
 
     protected $description = 'Send the daily "record your transactions" push reminder to users whose reminder time has passed';
 
-    public function handle(): int
+    public function handle(VapidKeys $vapid): int
     {
-        $config = config('services.webpush');
-        if (empty($config['public_key']) || empty($config['private_key'])) {
-            $this->warn('VAPID keys are not configured; skipping push reminders.');
+        $config = $vapid->get();
+        if (! $config) {
+            $this->warn('No VAPID keys available; skipping push reminders.');
 
             return self::SUCCESS;
         }
@@ -34,7 +35,9 @@ class SendDailyReminders extends Command
             ->each(function (User $user) use ($webPush, &$sent) {
                 $now = CarbonImmutable::now($user->timezone);
                 $today = $now->toDateString();
-                if ($now->format('H:i') < $user->reminder_time || $user->last_reminded_on?->toDateString() === $today) {
+                if ($now->format('H:i') < $user->reminder_time
+                    || $user->last_reminded_on?->toDateString() === $today
+                    || $user->last_reviewed_on?->toDateString() === $today) { // already reviewed: don't nag
                     return;
                 }
 

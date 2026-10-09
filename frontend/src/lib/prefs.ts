@@ -36,21 +36,3 @@ export function saveDefaults(d: QuickDefaults) {
     /* ignore */
   }
 }
-
-const REVIEW_KEY = "trackaa.reviewed-on";
-
-export function reviewedOn(): string | null {
-  try {
-    return localStorage.getItem(REVIEW_KEY);
-  } catch {
-    return null;
-  }
-}
-
-export function markReviewed(day: string) {
-  try {
-    localStorage.setItem(REVIEW_KEY, day);
-  } catch {
-    /* ignore */
-  }
-}
