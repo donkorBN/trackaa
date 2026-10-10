@@ -2,12 +2,12 @@ import type { Metadata } from "next";
 import { Landing } from "./Landing";
 
 export const metadata: Metadata = {
-  title: "Trackaa: know where every cedi goes",
+  title: "Trackaa: payday was two weeks ago. Where did the money go?",
   description:
-    "Log what you spend in seconds, see your money clearly, and check it against your MoMo statement. A personal finance tracker built for Ghana.",
+    "See where every cedi goes. Log a spend in five seconds, get a budget that tells you what you can spend today, and check it against your MoMo statement.",
   openGraph: {
-    title: "Trackaa: know where every cedi goes",
-    description: "Log spending in seconds, set a budget that tells you what's left today, and check it against your MoMo statement.",
+    title: "Payday was two weeks ago. Where did the money go?",
+    description: "Trackaa shows you where every cedi goes: MoMo, cash and cedis, in seconds a day.",
     images: ["/icon-512.png"],
   },
 };
