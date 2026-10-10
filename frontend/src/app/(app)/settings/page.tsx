@@ -226,7 +226,7 @@ function Reminders() {
                   aria-label="Reminder time"
                   defaultValue={me.reminder_time}
                   onBlur={(e) => e.target.value && e.target.value !== me.reminder_time && save({ reminder_time: e.target.value })}
-                  className="tabular h-9 rounded-xl bg-surface-2 px-3 text-[15px] font-medium outline-none"
+                  className="tabular h-9 rounded-xl bg-surface-2 px-3 text-base font-medium outline-none"
                 />
               }
             />

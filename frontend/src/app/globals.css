@@ -128,7 +128,11 @@ body {
 
 .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
 
-button, a { touch-action: manipulation; }
+/* No double-tap zoom on controls (fast keypad taps), pinch-zoom still works. */
+button, a, input, select, textarea, label { touch-action: manipulation; }
+
+/* iOS: don't inflate text when rotating to landscape. */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
 :focus-visible {
   outline: 2px solid var(--transfer);

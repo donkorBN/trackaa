@@ -131,8 +131,9 @@ export function Button({
   );
 }
 
+// 16px minimum: iPhone Safari zooms the page into any field with smaller text.
 const fieldBase =
-  "h-11 rounded-xl border border-line bg-surface px-3.5 text-[15px] text-ink placeholder:text-subtle outline-none transition focus:border-ink/40 focus:ring-4 focus:ring-ink/5";
+  "h-11 rounded-xl border border-line bg-surface px-3.5 text-base text-ink placeholder:text-subtle outline-none transition focus:border-ink/40 focus:ring-4 focus:ring-ink/5";
 
 export function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return <input {...props} className={cx(fieldBase, props.className ?? "w-full")} />;

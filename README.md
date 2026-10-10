@@ -90,15 +90,17 @@ Render's own free Postgres is deleted after 30 days, so use Neon (or a *paid* Re
 
 Every start runs database migrations automatically. Every push to `main` redeploys.
 
-### 3. Keep it awake and send reminders (cron-job.org, free)
-Free Render services sleep after 15 minutes without traffic, which means a slow first load and no reminders. One free pinger fixes both:
+### 3. Phone reminders (optional, cron-job.org, free)
+Free Render services sleep after 15 minutes without visits. The first visit after that takes about a minute while the app wakes up; after that it's fast. That's fine for personal use. **A sleeping app can't send push reminders**, though; the in-app reminder banner still works.
+
+For phone reminders, wake the app at reminder time instead of keeping it awake all day. A pinger every few minutes would also keep the Neon database awake 24/7, and that alone uses more than Neon's free monthly compute.
 1. In Render → your service → **Environment**, copy the value of `CRON_SECRET`.
 2. At cron-job.org → **Create cronjob**:
    - URL: `https://<your-service>.onrender.com/api/cron/reminders?token=<CRON_SECRET>`
-   - Schedule: every **5 minutes**
-   - Save.
+   - Schedule: **custom**, at the reminder time **and 5 minutes later**, e.g. `0,5 20 * * *` for 20:00 and 20:05. The first call wakes the app (it may time out); the second sends.
+   - Make sure the cron-job.org time zone matches yours (Ghana = UTC / GMT).
 
-Each call sends any daily reminders that are due (so a reminder may arrive up to 5 minutes late) and keeps the app awake. One always-on service fits inside Render's 750 free hours a month.
+Everyone whose reminder time has passed and who hasn't reviewed today gets it on that run. If your friends pick different times, add one pair of runs per time. Or pick one shared time, say 20:00.
 
 ### 4. Password-reset emails (optional but recommended)
 In Render → **Environment**, add your email provider's SMTP details, then **Save** (it redeploys). Resend and Brevo both have free tiers.
@@ -245,7 +247,7 @@ GET    /api/push/key      POST|DELETE /api/push/subscribe
 
 ## Known limitations
 
-- **Push reminders need something to trigger them**: the cron-job.org pinger on Render, or the Laravel scheduler elsewhere. On iPhone, Web Push also requires adding the app to the Home Screen (iOS 16.4+). Otherwise you get the in-app banner after your reminder time.
+- **Push reminders need something to trigger them**: scheduled cron-job.org calls on Render (see above), or the Laravel scheduler elsewhere. On Render's free plan the app sleeps when idle, so the first visit after a quiet spell takes about a minute. On iPhone, Web Push also requires adding the app to the Home Screen (iOS 16.4+). Otherwise you get the in-app banner after your reminder time.
 - **Password-reset emails need an SMTP provider** configured (`MAIL_*`).
 - **Login tokens are kept in `localStorage`.** They expire after 90 days of not being used. Fine for a personal tool; for extra hardening, switch to cookie-based Sanctum SPA auth.
 - **Offline**: new transactions are queued while offline. Editing or deleting an existing transaction still needs a connection.

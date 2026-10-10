@@ -130,7 +130,7 @@ export default function OverviewPage() {
                     max={k === "from" ? range.to : undefined}
                     min={k === "to" ? range.from : undefined}
                     onChange={(e) => setRange({ ...range, [k]: e.target.value })}
-                    className="h-10 rounded-xl border border-hero-line bg-white/[0.06] px-3 text-sm text-hero-fg [color-scheme:dark] outline-none"
+                    className="h-10 rounded-xl border border-hero-line bg-white/[0.06] px-3 text-base text-hero-fg [color-scheme:dark] outline-none"
                   />
                 ))}
               </div>
