@@ -49,6 +49,20 @@ class CategoryController extends Controller
         return response()->json($this->present($category));
     }
 
+    /** Only unused items can be deleted; anything with history is archived instead, so totals never change. */
+    public function destroy(Request $request, Category $category): JsonResponse
+    {
+        $this->authorizeOwner($request, $category);
+        abort_if(
+            $request->user()->transactions()->where('category_id', $category->id)->exists(),
+            422,
+            'This is used by existing transactions. Archive it instead.',
+        );
+        $category->delete();
+
+        return response()->json(null, 204);
+    }
+
     private function present(Category $c): array
     {
         return [

@@ -6,8 +6,9 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Gives a new user sensible starting categories, accounts and businesses.
- * Everything created here is the user's own and can be renamed or archived.
+ * Gives a new user sensible starting categories and accounts. Businesses are not
+ * pre-filled: people add their own during onboarding. Everything here can be
+ * renamed, archived or (if unused) deleted.
  */
 class DefaultSetup
 {
@@ -23,8 +24,6 @@ class DefaultSetup
         'Bank / MoMo Fees', 'Debt Repayment', 'Other Expense',
     ];
 
-    public const BUSINESSES = ['MachineWura', 'MediaWura', 'SneakersInn', 'Paylead', 'Other'];
-
     public const ACCOUNTS = [
         ['Mobile Money', 'mobile_money'],
         ['Cash', 'cash'],
@@ -39,9 +38,6 @@ class DefaultSetup
             }
             foreach (self::EXPENSE_CATEGORIES as $name) {
                 $user->categories()->create(['name' => $name, 'transaction_type' => 'expense']);
-            }
-            foreach (self::BUSINESSES as $name) {
-                $user->businesses()->create(['name' => $name]);
             }
             foreach (self::ACCOUNTS as [$name, $type]) {
                 $user->accounts()->create(['name' => $name, 'account_type' => $type, 'opening_balance' => 0]);

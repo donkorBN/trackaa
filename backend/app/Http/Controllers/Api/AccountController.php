@@ -57,6 +57,21 @@ class AccountController extends Controller
         ]);
     }
 
+    /** Only unused items can be deleted; anything with history is archived instead, so totals never change. */
+    public function destroy(Request $request, Account $account): JsonResponse
+    {
+        $this->authorizeOwner($request, $account);
+        abort_if(
+            $request->user()->transactions()->where(fn ($q) => $q->where('account_id', $account->id)->orWhere('to_account_id', $account->id))->exists()
+            || $account->statements()->exists(),
+            422,
+            'This is used by existing transactions. Archive it instead.',
+        );
+        $account->delete();
+
+        return response()->json(null, 204);
+    }
+
     private function present(Account $a, int $balance): array
     {
         return [

@@ -1,14 +1,15 @@
 "use client";
 
-import { ArrowDownLeft, ArrowUpRight, ChevronRight, CircleCheckBig, Plus, Settings } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, ChevronRight, Plus, Settings } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ReminderBanner } from "@/components/ReminderBanner";
+import { AnimatedMoney } from "@/components/AnimatedMoney";
+import { StreakChip, TodayCard } from "@/components/progress";
 import { ScopePicker, scopeQuery, type ScopeValue } from "@/components/ScopePicker";
 import { TxRow } from "@/components/TxRow";
 import { useQuickAdd } from "@/components/quick-add";
 import { Meter, meterTone } from "@/components/charts";
-import { Card, cx, ErrorBox, Eyebrow, SectionTitle, Skeleton } from "@/components/ui";
+import { Button, Card, cx, EmptyState, ErrorBox, Eyebrow, SectionTitle, Skeleton } from "@/components/ui";
 import { deviceTimezone, greeting, shortDate, ymd } from "@/lib/dates";
 import { useAccounts, useBudgets, useMe, useOverview } from "@/lib/hooks";
 import { formatGHS } from "@/lib/money";
@@ -66,28 +67,18 @@ export default function OverviewPage() {
           </Eyebrow>
           <h1 className="mt-0.5 text-[28px] leading-tight font-bold tracking-tight">Overview</h1>
         </div>
-        <div className="flex gap-2 md:hidden">
-          <Link
-            href="/review"
-            aria-label="Today's review"
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-surface text-ink"
-          >
-            <CircleCheckBig size={19} />
-          </Link>
+        <div className="flex items-center gap-2">
+          <StreakChip />
           <Link
             href="/settings"
             aria-label="Settings"
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-surface text-ink"
+            className="flex h-10 w-10 items-center justify-center rounded-full border border-line bg-surface text-ink md:hidden"
           >
             <Settings size={19} />
           </Link>
         </div>
-        <div className="hidden pb-1 text-[13px] text-muted md:block">
-          {new Date().toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
-        </div>
       </header>
 
-      <ReminderBanner />
       <ScopePicker value={scope} onChange={setScope} />
 
       {error && <ErrorBox error={error} onRetry={() => mutate()} />}
@@ -112,7 +103,7 @@ export default function OverviewPage() {
                   onClick={() => setPeriod(p.value)}
                   className={cx(
                     "h-8 flex-1 rounded-xl text-xs font-semibold transition",
-                    period === p.value ? "bg-white text-[#0c0e12]" : "text-hero-muted hover:text-hero-fg",
+                    period === p.value ? "bg-brand text-brand-ink" : "text-hero-muted hover:text-hero-fg",
                   )}
                 >
                   {p.label}
@@ -141,12 +132,12 @@ export default function OverviewPage() {
             </div>
             <div
               className={cx(
-                "tabular mt-1 text-[40px] leading-none font-bold tracking-tight",
-                data.period.net > 0 && "text-[#4ade80]",
+                "font-display mt-1 text-[44px] leading-none font-extrabold",
+                data.period.net > 0 && "text-brand",
                 data.period.net < 0 && "text-[#fb7185]",
               )}
             >
-              {formatGHS(data.period.net, { sign: true })}
+              <AnimatedMoney value={data.period.net} sign />
             </div>
 
             <div className="mt-5 grid grid-cols-2 gap-2">
@@ -158,27 +149,21 @@ export default function OverviewPage() {
           {/* Secondary period strip: today, or this month when the hero already shows today */}
           <MiniTotals title={period === "today" ? "This month" : "Today"} totals={period === "today" ? data.month : data.today} />
 
+          <TodayCard />
+
           <BudgetCard />
 
           {!data.has_transactions && (
-            <Card className="text-center">
-              <div className="py-3">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-2">
-                  <Plus size={22} />
-                </div>
-                <div className="mt-3 font-semibold">Record your first transaction</div>
-                <p className="mx-auto mt-1 max-w-xs text-sm text-muted">
-                  Tap + whenever money comes in or goes out. It takes about five seconds.
-                </p>
-                <button
-                  type="button"
-                  onClick={openQuickAdd}
-                  className="mt-4 h-10 rounded-xl bg-accent px-5 text-sm font-semibold text-accent-fg"
-                >
-                  Add a transaction
-                </button>
-              </div>
-            </Card>
+            <EmptyState
+              icon={<Plus size={30} strokeWidth={2.5} />}
+              title="Record your first spend"
+              body="Tap + whenever money comes in or goes out. It takes about five seconds, and it starts your streak."
+              action={
+                <Button onClick={openQuickAdd}>
+                  <Plus size={17} strokeWidth={2.5} /> Add a transaction
+                </Button>
+              }
+            />
           )}
 
           <Spending data={data} period={period} range={range} />
@@ -251,7 +236,7 @@ function HeroStat({ label, value, kind }: { label: string; value: number; kind: 
         </span>
         {label}
       </div>
-      <div className="tabular mt-1.5 text-[17px] font-semibold tracking-tight">{formatGHS(value)}</div>
+      <div className="mt-1.5 text-[17px] font-semibold tracking-tight"><AnimatedMoney value={value} /></div>
     </div>
   );
 }

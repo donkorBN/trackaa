@@ -12,6 +12,7 @@ import {
   Card,
   Chip,
   cx,
+  EmptyState,
   ErrorBox,
   Eyebrow,
   FormError,
@@ -110,18 +111,12 @@ function Budgets({ res, error, retry }: { res?: BudgetsResponse; error: unknown;
       {overall ? (
         <OverallBudget b={overall} res={res} onEdit={() => setEditing(overall)} />
       ) : (
-        <Card className="text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-2">
-            <Target size={22} />
-          </div>
-          <div className="mt-3 font-semibold">Set a monthly budget</div>
-          <p className="mx-auto mt-1 max-w-xs text-sm text-muted">
-            We&apos;ll split it into a daily and weekly amount and show you how much you can still spend.
-          </p>
-          <Button className="mt-4" onClick={() => setEditing("new")}>
-            Set budget
-          </Button>
-        </Card>
+        <EmptyState
+          icon={<Target size={30} />}
+          title="Set a monthly budget"
+          body="We'll split it into a daily and weekly amount and show how much you can still spend."
+          action={<Button onClick={() => setEditing("new")}>Set budget</Button>}
+        />
       )}
 
       {[...others, ...byCategory].length > 0 && (
@@ -374,18 +369,12 @@ function Goals() {
       {error && <ErrorBox error={error} onRetry={() => mutate()} />}
       {isLoading && <Skeleton className="h-36" />}
       {!isLoading && goals.length === 0 && (
-        <Card className="text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-2">
-            <Flag size={22} />
-          </div>
-          <div className="mt-3 font-semibold">Save towards something</div>
-          <p className="mx-auto mt-1 max-w-xs text-sm text-muted">
-            An emergency fund, rent, stock for the business, a new laptop. We&apos;ll show what to put aside each week.
-          </p>
-          <Button className="mt-4" onClick={() => setCreating(true)}>
-            Create a goal
-          </Button>
-        </Card>
+        <EmptyState
+          icon={<Flag size={30} />}
+          title="Save towards something"
+          body="An emergency fund, rent, stock for the business, a new laptop. We'll show what to put aside each week."
+          action={<Button onClick={() => setCreating(true)}>Create a goal</Button>}
+        />
       )}
       <div className="grid gap-3 md:grid-cols-2">
         {goals.map((g, i) => (

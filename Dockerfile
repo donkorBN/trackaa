@@ -23,8 +23,8 @@ RUN composer dump-autoload --no-dev --optimize --no-interaction
 FROM php:8.3-apache
 
 RUN apt-get update \
- && apt-get install -y --no-install-recommends libpq-dev libgmp-dev \
- && docker-php-ext-install pdo_pgsql gmp bcmath opcache \
+ && apt-get install -y --no-install-recommends libpq-dev \
+ && docker-php-ext-install pdo_pgsql opcache \
  && rm -rf /var/lib/apt/lists/* \
  && a2enmod rewrite headers
 

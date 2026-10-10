@@ -1,18 +1,17 @@
 "use client";
 
 import {
-  Bell, ChevronRight, Download, KeyRound, LogOut, Monitor, Moon, Smartphone, Sun, type LucideIcon,
+  ChevronRight, Download, KeyRound, Trash2, LogOut, Monitor, Moon, Smartphone, Sun, type LucideIcon,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { useToast } from "@/components/toast";
-import { Button, Card, cx, FormError, Input, Label, SectionTitle, Segmented, Select, Sheet, Spinner, Toggle } from "@/components/ui";
+import { Button, Card, cx, FormError, Input, Label, SectionTitle, Segmented, Select, Sheet, Spinner } from "@/components/ui";
 import { api, apiDownload, ApiError, setToken, withQuery } from "@/lib/api";
 import { deviceTimezone } from "@/lib/dates";
 import { useAccounts, useBusinesses, useCategories, useMe, useRefreshAll } from "@/lib/hooks";
 import { useInstall } from "@/lib/install";
 import { formatGHS, parseAmount, toInputString } from "@/lib/money";
-import { disablePush, enablePush, pushActive, pushSupported } from "@/lib/push";
 import { getThemePref, setThemePref, type ThemePref } from "@/lib/theme";
 import type { Account } from "@/lib/types";
 import { ACCOUNT_ICON, categoryVisual, IconBubble, Initials } from "@/lib/visuals";
@@ -34,7 +33,6 @@ export default function SettingsPage() {
     <div className="space-y-7">
       <h1 className="pt-1 text-[28px] leading-tight font-bold tracking-tight">Settings</h1>
       <Profile />
-      <Reminders />
       <Accounts />
       <Businesses />
       <Categories />
@@ -166,91 +164,37 @@ function NameForm({ initial, onDone }: { initial: string; onDone: () => void }) 
   );
 }
 
-/* ---------------- Reminders ---------------- */
-
-function Reminders() {
-  const { data: me, mutate } = useMe();
+/** Deletes an item that was never used; if it has history, explains that archiving is the way. */
+function DeleteButton({ path, noun, onDone }: { path: string; noun: string; onDone: () => void }) {
+  const refreshAll = useRefreshAll();
   const toast = useToast();
-  const [push, setPush] = useState<"on" | "off" | "unsupported" | "loading">("loading");
-
-  useEffect(() => {
-    if (!pushSupported()) return setPush("unsupported");
-    pushActive().then((on) => setPush(on ? "on" : "off"));
-  }, []);
-
-  async function save(patch: Partial<{ reminder_enabled: boolean; reminder_time: string }>) {
-    try {
-      await mutate(api("/me", { method: "PATCH", body: { ...patch, timezone: deviceTimezone() } }), { revalidate: false });
-    } catch (err) {
-      toast({ message: errorText(err), tone: "error" });
-    }
-  }
-
-  async function togglePush() {
-    setPush("loading");
-    try {
-      if (push === "on") {
-        await disablePush();
-        setPush("off");
-      } else {
-        const r = await enablePush();
-        setPush(r === "enabled" ? "on" : "off");
-        if (r === "enabled") toast({ message: "Notifications are on for this device" });
-        if (r === "denied") toast({ message: "Notifications are blocked. Allow them in your browser settings.", tone: "error" });
-        if (r === "unavailable") toast({ message: "Push isn't available on the server right now.", tone: "error" });
-      }
-    } catch (err) {
-      toast({ message: errorText(err), tone: "error" });
-      setPush("off");
-    }
-  }
-
-  if (!me) return null;
+  const [confirm, setConfirm] = useState(false);
+  const [busy, setBusy] = useState(false);
   return (
-    <section>
-      <SectionTitle>Daily reminder</SectionTitle>
-      <Card flush className="divide-y divide-line">
-        <Row
-          leading={<RowIcon Icon={Bell} />}
-          title="Remind me every day"
-          subtitle="“Have you recorded everything you earned and spent today?”"
-          right={<Toggle label="Daily reminder" checked={me.reminder_enabled} onChange={(v) => save({ reminder_enabled: v })} />}
-        />
-        {me.reminder_enabled && (
-          <>
-            <Row
-              title="Time"
-              right={
-                <input
-                  type="time"
-                  aria-label="Reminder time"
-                  defaultValue={me.reminder_time}
-                  onBlur={(e) => e.target.value && e.target.value !== me.reminder_time && save({ reminder_time: e.target.value })}
-                  className="tabular h-9 rounded-xl bg-surface-2 px-3 text-base font-medium outline-none"
-                />
-              }
-            />
-            <Row
-              title="Phone notifications"
-              subtitle={
-                push === "unsupported"
-                  ? "Not supported in this browser. On iPhone, add Trackaa to your Home Screen first."
-                  : push === "on"
-                    ? "On for this device"
-                    : "Otherwise you'll see a reminder when you open the app"
-              }
-              right={
-                push === "unsupported" ? undefined : push === "loading" ? (
-                  <Spinner className="text-muted" />
-                ) : (
-                  <Toggle label="Phone notifications" checked={push === "on"} onChange={togglePush} />
-                )
-              }
-            />
-          </>
-        )}
-      </Card>
-    </section>
+    <Button
+      variant="danger"
+      size="lg"
+      aria-label={`Delete ${noun.toLowerCase()}`}
+      disabled={busy}
+      onClick={async () => {
+        if (!confirm) return setConfirm(true);
+        setBusy(true);
+        try {
+          await api(path, { method: "DELETE" });
+          refreshAll();
+          toast({ message: `${noun} deleted` });
+          onDone();
+        } catch (err) {
+          const e = err as ApiError;
+          toast({ message: e.status === 422 ? `This ${noun.toLowerCase()} has transactions, so it can only be archived.` : e.message, tone: "error" });
+          setBusy(false);
+          setConfirm(false);
+        }
+      }}
+    >
+      {busy ? <Spinner /> : <Trash2 size={17} />}
+      {confirm && "Sure?"}
+    </Button>
   );
 }
 
@@ -338,6 +282,7 @@ function AccountEditor({ account, onDone }: { account: Account | null; onDone: (
       </div>
       <FormError>{error}</FormError>
       <div className="flex gap-2">
+        {account && <DeleteButton path={`/accounts/${account.id}`} noun="Account" onDone={onDone} />}
         {account && (
           <Button
             variant={account.archived ? "secondary" : "danger"}
@@ -386,6 +331,7 @@ function NameEditor({ item, endpoint, extra, noun, onDone }: { item: NamedItem |
       {item && <p className="text-xs text-muted">Archiving hides it from Quick Add. Past transactions keep it.</p>}
       <FormError>{error}</FormError>
       <div className="flex gap-2">
+        {item && <DeleteButton path={`${endpoint}/${item.id}`} noun={noun} onDone={onDone} />}
         {item && (
           <Button
             variant={item.archived ? "secondary" : "danger"}
@@ -411,7 +357,11 @@ function Businesses() {
     <section>
       <SectionTitle action={<AddButton onClick={() => setEditing("new")} />}>Businesses</SectionTitle>
       <Card flush className="divide-y divide-line overflow-hidden">
-        {businesses.length === 0 && <p className="px-4 py-4 text-sm text-muted">No businesses yet.</p>}
+        {businesses.length === 0 && (
+          <p className="px-4 py-4 text-sm text-muted">
+            Run a business or side hustle? Add it to track its money separately from yours. If you don&apos;t, you&apos;ll never see business options.
+          </p>
+        )}
         {businesses.map((b) => (
           <Row key={b.id} leading={<Initials name={b.name} />} title={b.name} archived={b.archived} onClick={() => setEditing(b)} />
         ))}

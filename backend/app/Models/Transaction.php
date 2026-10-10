@@ -21,6 +21,21 @@ class Transaction extends Model
         return ['amount' => 'integer', 'occurred_at' => 'datetime'];
     }
 
+    /** Logging anything counts today towards the user's streak (in their timezone). */
+    protected static function booted(): void
+    {
+        static::created(function (Transaction $t) {
+            $tz = User::whereKey($t->user_id)->value('timezone') ?: 'Africa/Accra';
+            ActivityDay::query()->insertOrIgnore([
+                'user_id' => $t->user_id,
+                'day' => now($tz)->toDateString(),
+                'kind' => 'logged',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        });
+    }
+
     public function business(): BelongsTo
     {
         return $this->belongsTo(Business::class);

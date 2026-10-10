@@ -35,16 +35,4 @@ return [
         ],
     ],
 
-    // Daily reminder push notifications. Generate keys with: php artisan webpush:vapid
-    'webpush' => [
-        'public_key' => env('VAPID_PUBLIC_KEY'),
-        'private_key' => env('VAPID_PRIVATE_KEY'),
-        'subject' => env('VAPID_SUBJECT', 'mailto:admin@example.com'),
-    ],
-
-    // Shared secret for /api/cron/reminders (external pinger). Empty = endpoint disabled.
-    'cron' => [
-        'secret' => env('CRON_SECRET'),
-    ],
-
 ];

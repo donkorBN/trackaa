@@ -16,7 +16,7 @@ export function AuthLayout({ title, subtitle, children, footer }: { title: strin
       <div className="w-full max-w-sm animate-pop">
         <div className="mb-8 flex flex-col items-center text-center">
           <Image width={56} height={56} src="/icon-192.png" alt="" className="h-14 w-14 rounded-[18px] shadow-float" />
-          <h1 className="mt-5 text-2xl font-bold tracking-tight">{title}</h1>
+          <h1 className="mt-6 text-[28px] leading-tight font-extrabold">{title}</h1>
           {subtitle && <p className="mt-1.5 text-[15px] text-muted">{subtitle}</p>}
         </div>
         <div className="rounded-[28px] border border-line bg-surface p-6 shadow-card">{children}</div>
@@ -71,7 +71,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
           : { ...form, password_confirmation: form.password, timezone: deviceTimezone() };
       const res = await api<{ token: string; user: User }>(`/auth/${mode}`, { method: "POST", body });
       setToken(res.token);
-      router.replace("/");
+      router.replace(mode === "register" ? "/welcome/" : "/");
     } catch (err) {
       setError(firstError(err));
       setBusy(false);

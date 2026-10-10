@@ -4,7 +4,7 @@ import useSWR, { useSWRConfig } from "swr";
 import { useCallback, useEffect } from "react";
 import { fetcher, withQuery } from "./api";
 import { deviceTimezone } from "./dates";
-import type { Account, BudgetsResponse, Business, Category, Goal, Insights, Overview, User } from "./types";
+import type { Account, BudgetsResponse, Business, Category, Goal, Insights, Overview, Progress, User } from "./types";
 
 type List<T> = { data: T[] };
 
@@ -61,4 +61,8 @@ export function useGoals() {
 
 export function useInsights(query: Record<string, string | number | undefined>) {
   return useSWR<Insights>(withQuery("/insights", { ...query, tz: deviceTimezone() }), fetcher, { keepPreviousData: true });
+}
+
+export function useProgress() {
+  return useSWR<Progress>("/progress", fetcher);
 }

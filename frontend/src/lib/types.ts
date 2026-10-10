@@ -7,8 +7,6 @@ export interface User {
   name: string;
   email: string;
   timezone: string;
-  reminder_enabled: boolean;
-  reminder_time: string; // "HH:MM"
   last_reviewed_on: string | null; // Y-m-d
 }
 
@@ -191,4 +189,24 @@ export interface StatementDetail {
   };
   lines: StatementLineT[];
   app_only: Transaction[];
+}
+
+export interface Badge {
+  key: string;
+  name: string;
+  description: string;
+  earned: boolean;
+  progress: { current: number; target: number } | null;
+}
+
+export interface Progress {
+  streak: number;
+  best_streak: number;
+  today_done: boolean;
+  at_risk: boolean;
+  week: { date: string; label: string; state: "logged" | "checkin" | "missed" | "future" }[];
+  active_days: number;
+  transactions: number;
+  level: { number: number; name: string; next_name: string | null; days_into_level: number; days_for_next: number | null };
+  badges: Badge[];
 }

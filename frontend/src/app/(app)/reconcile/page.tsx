@@ -4,7 +4,7 @@ import { ChevronRight, FileSpreadsheet, ShieldCheck, Upload } from "lucide-react
 import Link from "next/link";
 import useSWR from "swr";
 import { Meter } from "@/components/charts";
-import { Card, ErrorBox, Eyebrow, Skeleton } from "@/components/ui";
+import { Card, EmptyState, ErrorBox, Eyebrow, Skeleton } from "@/components/ui";
 import { fetcher } from "@/lib/api";
 import { monthName } from "@/lib/dates";
 import type { StatementListItem } from "@/lib/types";
@@ -20,7 +20,7 @@ export default function ReconcilePage() {
         </div>
         <Link
           href="/reconcile/import"
-          className="inline-flex h-10 items-center gap-2 rounded-xl bg-accent px-4 text-sm font-semibold text-accent-fg"
+          className="pop inline-flex h-10 items-center gap-2 rounded-xl bg-brand px-4 text-sm font-bold text-brand-ink"
         >
           <Upload size={16} /> Import
         </Link>
@@ -42,11 +42,16 @@ export default function ReconcilePage() {
       {!data ? (
         <Skeleton className="h-40" />
       ) : data.data.length === 0 ? (
-        <Card className="py-8 text-center">
-          <FileSpreadsheet className="mx-auto text-muted" size={28} />
-          <p className="mt-3 font-semibold">No statements yet</p>
-          <p className="mt-1 text-sm text-muted">Import last month&apos;s MoMo statement to start.</p>
-        </Card>
+        <EmptyState
+          icon={<FileSpreadsheet size={30} />}
+          title="Check your MoMo statement"
+          body="Import last month's statement and we'll show anything you forgot to record."
+          action={
+            <Link href="/reconcile/import" className="pop inline-flex h-11 items-center gap-2 rounded-xl bg-brand px-5 text-sm font-bold text-brand-ink">
+              <Upload size={16} /> Import a statement
+            </Link>
+          }
+        />
       ) : (
         <Card flush className="divide-y divide-line overflow-hidden">
           {data.data.map((s) => (

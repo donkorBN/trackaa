@@ -42,6 +42,20 @@ class BusinessController extends Controller
         return response()->json($this->present($business));
     }
 
+    /** Only unused items can be deleted; anything with history is archived instead, so totals never change. */
+    public function destroy(Request $request, Business $business): JsonResponse
+    {
+        $this->authorizeOwner($request, $business);
+        abort_if(
+            $request->user()->transactions()->where('business_id', $business->id)->exists(),
+            422,
+            'This is used by existing transactions. Archive it instead.',
+        );
+        $business->delete();
+
+        return response()->json(null, 204);
+    }
+
     private function present(Business $b): array
     {
         return ['id' => $b->id, 'name' => $b->name, 'archived' => $b->isArchived()];

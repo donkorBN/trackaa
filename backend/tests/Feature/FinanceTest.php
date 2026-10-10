@@ -51,7 +51,7 @@ class FinanceTest extends TestCase
 
     private function biz(string $name): int
     {
-        return $this->user->businesses()->where('name', $name)->value('id');
+        return $this->user->businesses()->firstOrCreate(['name' => $name])->id;
     }
 
     private function add(array $overrides = []): array
@@ -76,7 +76,7 @@ class FinanceTest extends TestCase
         $user = User::where('email', 'ama@example.com')->first();
         $this->assertSame(7, $user->categories()->where('transaction_type', 'income')->count());
         $this->assertSame(17, $user->categories()->where('transaction_type', 'expense')->count());
-        $this->assertSame(['MachineWura', 'MediaWura', 'SneakersInn', 'Paylead', 'Other'], $user->businesses()->pluck('name')->all());
+        $this->assertSame(0, $user->businesses()->count()); // people add their own businesses
         $this->assertSame(3, $user->accounts()->count());
     }
 

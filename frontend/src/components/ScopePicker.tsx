@@ -10,7 +10,9 @@ export interface ScopeValue {
 }
 
 export function ScopePicker({ value, onChange }: { value: ScopeValue; onChange: (v: ScopeValue) => void }) {
-  const { businesses } = useBusinesses();
+  const { businesses, data } = useBusinesses();
+  // Personal-only users never see the switch.
+  if (!data || businesses.length === 0) return null;
   return (
     <div className="space-y-2.5">
       <Segmented

@@ -1,12 +1,12 @@
 "use client";
 
-import { Download, Search, SlidersHorizontal, X } from "lucide-react";
+import { Download, ListPlus, Plus, Search, SlidersHorizontal, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import useSWRInfinite from "swr/infinite";
 import { useQuickAdd } from "@/components/quick-add";
 import { useToast } from "@/components/toast";
 import { TxRow } from "@/components/TxRow";
-import { Button, Card, Chip, cx, ErrorBox, Input, Label, Select, Sheet, Skeleton } from "@/components/ui";
+import { Button, Card, Chip, cx, EmptyState, ErrorBox, Input, Label, Select, Sheet, Skeleton } from "@/components/ui";
 import { apiDownload, fetcher, withQuery } from "@/lib/api";
 import { dayLabel, deviceTimezone, shortDate, ymd } from "@/lib/dates";
 import { useAccounts, useBusinesses, useCategories, useOnRefresh } from "@/lib/hooks";
@@ -183,6 +183,17 @@ export default function TransactionsPage() {
             <Skeleton key={i} className="h-40" />
           ))}
         </div>
+      ) : items.length === 0 && !error && !(pills.length > 0 || debouncedQ || filters.type) ? (
+        <EmptyState
+          icon={<ListPlus size={30} />}
+          title="Nothing recorded yet"
+          body="Everything you record shows up here, grouped by day, with daily totals."
+          action={
+            <Button onClick={openQuickAdd}>
+              <Plus size={17} strokeWidth={2.5} /> Add a transaction
+            </Button>
+          }
+        />
       ) : items.length === 0 && !error ? (
         <Card className="py-10 text-center">
           {pills.length > 0 || debouncedQ || filters.type ? (
@@ -201,13 +212,7 @@ export default function TransactionsPage() {
               </Button>
             </>
           ) : (
-            <>
-              <p className="font-semibold">No transactions yet</p>
-              <p className="mt-1 text-sm text-muted">Everything you record shows up here, grouped by day.</p>
-              <Button className="mt-4" onClick={openQuickAdd}>
-                Add a transaction
-              </Button>
-            </>
+            <></>
           )}
         </Card>
       ) : (
@@ -267,6 +272,7 @@ export default function TransactionsPage() {
               </div>
             )}
           </div>
+          {businesses.length > 0 && (
           <div>
             <Label>Personal or business</Label>
             <div className="flex gap-2">
@@ -281,7 +287,8 @@ export default function TransactionsPage() {
               ))}
             </div>
           </div>
-          {filters.scope !== "personal" && (
+          )}
+          {filters.scope !== "personal" && businesses.length > 0 && (
             <div>
               <Label htmlFor="f-biz">Business</Label>
               <Select id="f-biz" value={filters.business_id} onChange={(e) => set("business_id", e.target.value)}>

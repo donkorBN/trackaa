@@ -8,6 +8,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { getToken } from "@/lib/api";
 import { useRefreshAll } from "@/lib/hooks";
 import { flushOutbox, useOutboxCount } from "@/lib/offline";
+import { BadgeCelebrations } from "./progress";
 import { QuickAddProvider, useQuickAdd } from "./quick-add";
 import { useToast } from "./toast";
 import { cx, Spinner } from "./ui";
@@ -48,6 +49,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <QuickAddProvider>
       <OfflineSync />
+      <BadgeCelebrations />
       <Frame>{children}</Frame>
     </QuickAddProvider>
   );
@@ -99,18 +101,18 @@ function Frame({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-dvh md:flex">
-      {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-line bg-surface px-4 py-6 md:flex">
-        <Link href="/" className="mb-8 flex items-center gap-2.5 px-2">
+      {/* Desktop sidebar (Paylead style: deep teal, neon active item) */}
+      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col bg-nav px-4 py-5 text-white md:flex">
+        <Link href="/" className="mb-6 flex items-center gap-2.5 px-2">
           <Image width={32} height={32} src="/icon-192.png" alt="" className="h-8 w-8 rounded-[10px]" />
-          <span className="text-[17px] font-bold tracking-tight">Trackaa</span>
+          <Wordmark className="text-white" />
         </Link>
         <button
           type="button"
           onClick={openQuickAdd}
-          className="mb-6 flex h-11 items-center justify-center gap-2 rounded-2xl bg-accent text-sm font-semibold text-accent-fg shadow-card hover:opacity-90"
+          className="pop mb-6 flex h-11 items-center justify-center gap-2 rounded-2xl bg-brand text-sm font-bold text-brand-ink"
         >
-          <Plus size={18} strokeWidth={2.5} /> New transaction
+          <Plus size={18} strokeWidth={2.75} /> New transaction
         </button>
         <nav className="space-y-1">
           {SIDEBAR.map(({ href, label, icon: Icon }) => (
@@ -118,16 +120,16 @@ function Frame({ children }: { children: ReactNode }) {
               key={href}
               href={href}
               className={cx(
-                "flex h-10 items-center gap-3 rounded-xl px-3 text-sm font-medium transition-colors",
-                isActive(href) ? "bg-surface-2 text-ink" : "text-muted hover:bg-surface-2 hover:text-ink",
+                "flex h-11 items-center gap-3 rounded-xl px-3 text-[15px] font-medium transition-colors",
+                isActive(href) ? "bg-brand font-semibold text-brand-ink" : "text-white/80 hover:bg-white/[0.07] hover:text-white",
               )}
             >
-              <Icon size={19} strokeWidth={isActive(href) ? 2.2 : 1.8} /> {label}
+              <Icon size={19} strokeWidth={isActive(href) ? 2.3 : 1.8} /> {label}
             </Link>
           ))}
         </nav>
-        <p className="mt-auto px-3 text-xs text-subtle">
-          Press <kbd className="rounded-md border border-line bg-surface-2 px-1.5 py-0.5 font-sans text-[11px] text-muted">N</kbd> to add
+        <p className="mt-auto px-3 text-xs text-white/50">
+          Press <kbd className="rounded-md border border-white/20 px-1.5 py-0.5 font-sans text-[11px] text-white/70">N</kbd> to add
         </p>
       </aside>
 
@@ -142,7 +144,7 @@ function Frame({ children }: { children: ReactNode }) {
 
       {/* Mobile bottom bar */}
       <nav className="fixed inset-x-0 bottom-0 z-40 md:hidden">
-        <div className="pb-safe border-t border-line bg-surface/90 backdrop-blur-xl">
+        <div className="pb-safe border-t border-line bg-surface/92 backdrop-blur-xl">
           <div className="mx-auto grid h-16 max-w-md grid-cols-5 items-center">
             {NAV.slice(0, 2).map((n) => (
               <NavItem key={n.href} {...n} active={isActive(n.href)} />
@@ -152,9 +154,9 @@ function Frame({ children }: { children: ReactNode }) {
                 type="button"
                 onClick={openQuickAdd}
                 aria-label="Add transaction"
-                className="flex h-12 w-12 items-center justify-center rounded-2xl bg-accent text-accent-fg shadow-float transition active:scale-95"
+                className="pop -mt-1 flex h-12 w-14 items-center justify-center rounded-2xl bg-brand text-brand-ink"
               >
-                <Plus size={26} strokeWidth={2.5} />
+                <Plus size={26} strokeWidth={2.75} />
               </button>
             </div>
             {NAV.slice(2).map((n) => (
@@ -169,9 +171,21 @@ function Frame({ children }: { children: ReactNode }) {
 
 function NavItem({ href, label, icon: Icon, active }: { href: string; label: string; icon: typeof House; active: boolean }) {
   return (
-    <Link href={href} className={cx("flex flex-col items-center gap-1 text-[10.5px] font-medium", active ? "text-ink" : "text-subtle")}>
-      <Icon size={22} strokeWidth={active ? 2.2 : 1.8} />
+    <Link href={href} className={cx("flex flex-col items-center gap-1 text-[10.5px] font-semibold", active ? "text-ink" : "text-subtle")}>
+      <span className={cx("flex h-7 w-12 items-center justify-center rounded-full transition-colors", active && "bg-brand-soft dark:bg-brand/15")}>
+        <Icon size={21} strokeWidth={active ? 2.3 : 1.8} />
+      </span>
       {label}
     </Link>
+  );
+}
+
+/** "trackaa" with a neon underline, like Paylead's wordmark. */
+export function Wordmark({ className }: { className?: string }) {
+  return (
+    <span className={cx("font-display relative text-[21px] font-extrabold tracking-tight", className)}>
+      trackaa
+      <span className="absolute -bottom-0.5 left-0 h-[3px] w-full rounded-full bg-brand" />
+    </span>
   );
 }

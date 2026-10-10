@@ -105,11 +105,12 @@ export function Button({
   className,
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "secondary" | "danger" | "ghost";
+  variant?: "primary" | "dark" | "secondary" | "danger" | "ghost";
   size?: "sm" | "md" | "lg";
 }) {
   const styles = {
-    primary: "bg-accent text-accent-fg hover:opacity-90",
+    primary: "pop bg-brand text-brand-ink",
+    dark: "bg-accent text-accent-fg hover:opacity-90",
     secondary: "border border-line bg-surface text-ink hover:bg-surface-2",
     danger: "bg-expense-soft text-expense hover:opacity-80",
     ghost: "text-muted hover:text-ink hover:bg-surface-2",
@@ -120,7 +121,8 @@ export function Button({
       type="button"
       {...props}
       className={cx(
-        "inline-flex items-center justify-center gap-2 font-semibold whitespace-nowrap transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex items-center justify-center gap-2 font-semibold whitespace-nowrap transition disabled:pointer-events-none disabled:opacity-50",
+        variant !== "primary" && "active:scale-[0.98]",
         styles,
         sizes,
         className,
@@ -262,5 +264,42 @@ export function Toggle({ checked, onChange, label }: { checked: boolean; onChang
         )}
       />
     </button>
+  );
+}
+
+/** Paylead-style icon tile: deep teal square, neon icon, neon offset shadow, slight tilt. */
+export function IconTile({ children, size = 72, tilt = true }: { children: ReactNode; size?: number; tilt?: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={cx("inline-flex shrink-0 items-center justify-center rounded-[22%] bg-[#0f2d2a] text-brand", tilt && "-rotate-3")}
+      style={{ width: size, height: size, boxShadow: `${Math.round(size / 18)}px ${Math.round(size / 18)}px 0 0 var(--brand)` }}
+    >
+      {children}
+    </span>
+  );
+}
+
+/** Empty state in Paylead's style: dashed card, icon tile, bold headline, one clear action. */
+export function EmptyState({
+  icon,
+  title,
+  body,
+  action,
+  compact,
+}: {
+  icon: ReactNode;
+  title: string;
+  body?: ReactNode;
+  action?: ReactNode;
+  compact?: boolean;
+}) {
+  return (
+    <div className={cx("flex flex-col items-center rounded-3xl border-2 border-dashed border-line bg-surface text-center", compact ? "px-5 py-7" : "px-6 py-10")}>
+      <IconTile size={compact ? 56 : 72}>{icon}</IconTile>
+      <h3 className={cx("font-display mt-6 font-extrabold tracking-tight text-ink", compact ? "text-[19px]" : "text-[23px] leading-tight")}>{title}</h3>
+      {body && <p className="mt-2 max-w-xs text-[14.5px] leading-relaxed text-muted">{body}</p>}
+      {action && <div className="mt-5">{action}</div>}
+    </div>
   );
 }

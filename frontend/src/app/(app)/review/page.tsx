@@ -9,7 +9,8 @@ import { TxRow } from "@/components/TxRow";
 import { Card, cx, ErrorBox, Eyebrow, SectionTitle, Skeleton, Spinner } from "@/components/ui";
 import { api, fetcher, withQuery } from "@/lib/api";
 import { deviceTimezone, ymd } from "@/lib/dates";
-import { useMe, useOverview } from "@/lib/hooks";
+import { useMe, useOverview, useRefreshAll } from "@/lib/hooks";
+import { confetti, haptic } from "@/lib/feedback";
 import { formatGHS } from "@/lib/money";
 import type { TransactionPage, User } from "@/lib/types";
 
@@ -26,6 +27,7 @@ export default function ReviewPage() {
   const toast = useToast();
   const today = ymd(new Date());
   const { data: me, mutate: mutateMe } = useMe();
+  const refreshAll = useRefreshAll();
   const [saving, setSaving] = useState(false);
   const [checked, setChecked] = useState<Set<number>>(new Set());
   const overview = useOverview({ period: "today", tz: deviceTimezone() });
@@ -37,7 +39,10 @@ export default function ReviewPage() {
     setSaving(true);
     try {
       await mutateMe(api<User>("/review", { method: "POST", body: { date: today } }), { revalidate: false });
-      toast({ message: "Nice. Today is fully recorded." });
+      refreshAll(); // streak + badges
+      haptic.success();
+      confetti("small");
+      toast({ message: "Nice. Today is fully recorded and counts towards your streak 🔥" });
     } catch (err) {
       toast({ message: (err as Error).message, tone: "error" });
     } finally {
@@ -121,11 +126,11 @@ export default function ReviewPage() {
         onClick={markDone}
         className={cx(
           "flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-[16px] font-semibold transition",
-          done ? "bg-income-soft text-income" : "bg-accent text-accent-fg active:scale-[0.99]",
+          done ? "bg-income-soft text-income" : "pop bg-brand font-bold text-brand-ink",
         )}
       >
         {saving ? <Spinner /> : done ? <Check size={20} strokeWidth={2.5} /> : null}
-        {done ? "Today is reviewed" : "Everything is recorded"}
+        {done ? "Today is checked in" : "That’s everything for today"}
       </button>
     </div>
   );

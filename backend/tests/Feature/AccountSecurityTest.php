@@ -6,7 +6,6 @@ use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
-use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\PersonalAccessToken;
 use Tests\TestCase;
 
@@ -89,9 +88,13 @@ class AccountSecurityTest extends TestCase
     public function test_review_is_stored_on_server(): void
     {
         $token = $this->register()['token'];
-        $this->withToken($token)->postJson('/api/review', ['date' => '2026-10-09'])
-            ->assertOk()->assertJsonPath('last_reviewed_on', '2026-10-09');
-        $this->withToken($token)->getJson('/api/me')->assertJsonPath('last_reviewed_on', '2026-10-09');
+        $today = now('Africa/Accra')->toDateString();
+        $this->withToken($token)->postJson('/api/review', ['date' => $today])
+            ->assertOk()->assertJsonPath('last_reviewed_on', $today);
+        $this->withToken($token)->getJson('/api/me')->assertJsonPath('last_reviewed_on', $today);
+        // Can't back-fill old days to fake a streak.
+        $this->withToken($token)->postJson('/api/review', ['date' => now('Africa/Accra')->subDays(3)->toDateString()])
+            ->assertJsonValidationErrors('date');
     }
 
     public function test_categories_report_recent_usage_and_csv_export(): void
@@ -127,30 +130,8 @@ class AccountSecurityTest extends TestCase
         $this->assertCount(1, array_filter(explode("\n", trim($other))));
     }
 
-    public function test_push_key_is_generated_automatically(): void
-    {
-        config(['services.webpush.public_key' => null, 'services.webpush.private_key' => null]);
-        Storage::fake('local');
-        $token = $this->register()['token'];
-        $key = $this->withToken($token)->getJson('/api/push/key')->assertOk()->json('public_key');
-        $this->assertNotEmpty($key);
-        $this->assertSame($key, $this->withToken($token)->getJson('/api/push/key')->json('public_key'));
-        $this->assertDatabaseCount('app_settings', 1); // stored in the database, so it survives restarts
-    }
-
     public function test_api_answers_json_even_without_accept_header(): void
     {
         $this->get('/api/me')->assertUnauthorized()->assertJsonPath('message', 'Unauthenticated.');
-    }
-
-    public function test_cron_endpoint_requires_the_secret(): void
-    {
-        config(['services.cron.secret' => null]);
-        $this->getJson('/api/cron/reminders')->assertNotFound(); // disabled when no secret is set
-
-        config(['services.cron.secret' => 'shh-123']);
-        $this->getJson('/api/cron/reminders?token=wrong')->assertNotFound();
-        $this->getJson('/api/cron/reminders?token=shh-123')->assertOk()->assertJsonPath('ok', true);
-        $this->withToken('shh-123')->getJson('/api/cron/reminders')->assertOk();
     }
 }

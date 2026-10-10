@@ -16,8 +16,6 @@ services:
     envVars:
       - key: APP_KEY
         generateValue: true
-      - key: CRON_SECRET
-        generateValue: true
       - key: DB_URL
         sync: false
       - key: DB_CONNECTION

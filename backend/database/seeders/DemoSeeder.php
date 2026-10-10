@@ -27,7 +27,7 @@ class DemoSeeder extends Seeder
 
         $cat = fn ($n) => $user->categories()->where('name', $n)->value('id');
         $acc = fn ($n) => $user->accounts()->where('name', $n)->value('id');
-        $biz = fn ($n) => $user->businesses()->where('name', $n)->value('id');
+        $biz = fn ($n) => $user->businesses()->firstOrCreate(['name' => $n])->id;
         $now = CarbonImmutable::now();
 
         $rows = [

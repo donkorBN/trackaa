@@ -1,6 +1,5 @@
-// Trackaa service worker: makes the app installable, keeps the shell available
-// offline, and shows the daily reminder push notification.
-const CACHE = "trackaa-v3";
+// Trackaa service worker: makes the app installable and keeps the shell available offline.
+const CACHE = "trackaa-v4";
 
 self.addEventListener("install", () => self.skipWaiting());
 
@@ -26,37 +25,5 @@ self.addEventListener("fetch", (event) => {
         return res;
       })
       .catch(() => caches.match(req).then((hit) => hit || (req.mode === "navigate" ? caches.match("/") : undefined))),
-  );
-});
-
-self.addEventListener("push", (event) => {
-  let data = {};
-  try {
-    data = event.data ? event.data.json() : {};
-  } catch {}
-  event.waitUntil(
-    self.registration.showNotification(data.title || "Trackaa", {
-      body: data.body || "Have you recorded everything you earned and spent today?",
-      icon: "/icon-192.png",
-      badge: "/icon-192.png",
-      tag: "daily-reminder",
-      data: { url: data.url || "/review" },
-    }),
-  );
-});
-
-self.addEventListener("notificationclick", (event) => {
-  event.notification.close();
-  const url = event.notification.data?.url || "/review";
-  event.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
-      for (const c of list) {
-        if ("focus" in c) {
-          c.navigate(url);
-          return c.focus();
-        }
-      }
-      return self.clients.openWindow(url);
-    }),
   );
 });

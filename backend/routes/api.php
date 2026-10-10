@@ -5,11 +5,10 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BudgetController;
 use App\Http\Controllers\Api\BusinessController;
 use App\Http\Controllers\Api\CategoryController;
-use App\Http\Controllers\Api\CronController;
 use App\Http\Controllers\Api\GoalController;
 use App\Http\Controllers\Api\InsightsController;
 use App\Http\Controllers\Api\OverviewController;
-use App\Http\Controllers\Api\PushController;
+use App\Http\Controllers\Api\ProgressController;
 use App\Http\Controllers\Api\StatementController;
 use App\Http\Controllers\Api\TransactionController;
 use App\Http\Middleware\ExtendTokenLifetime;
@@ -22,8 +21,6 @@ Route::middleware('throttle:10,1')->group(function () {
     Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
 });
 
-Route::get('/cron/reminders', [CronController::class, 'reminders'])->middleware('throttle:30,1');
-
 Route::middleware(['auth:sanctum', ExtendTokenLifetime::class])->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
@@ -32,12 +29,13 @@ Route::middleware(['auth:sanctum', ExtendTokenLifetime::class])->group(function 
     Route::post('/review', [AuthController::class, 'review']);
 
     Route::get('/overview', OverviewController::class);
+    Route::get('/progress', ProgressController::class);
 
     Route::get('/transactions/export', [TransactionController::class, 'export']);
     Route::apiResource('transactions', TransactionController::class);
-    Route::apiResource('accounts', AccountController::class)->only(['index', 'store', 'update']);
-    Route::apiResource('businesses', BusinessController::class)->only(['index', 'store', 'update']);
-    Route::apiResource('categories', CategoryController::class)->only(['index', 'store', 'update']);
+    Route::apiResource('accounts', AccountController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::apiResource('businesses', BusinessController::class)->only(['index', 'store', 'update', 'destroy']);
+    Route::apiResource('categories', CategoryController::class)->only(['index', 'store', 'update', 'destroy']);
 
     Route::get('/insights', InsightsController::class);
 
@@ -54,8 +52,4 @@ Route::middleware(['auth:sanctum', ExtendTokenLifetime::class])->group(function 
     Route::post('/statements/{statement}/rematch', [StatementController::class, 'rematch']);
     Route::patch('/statements/{statement}/lines/{line}', [StatementController::class, 'updateLine']);
     Route::post('/statements/{statement}/lines/{line}/record', [StatementController::class, 'recordLine']);
-
-    Route::get('/push/key', [PushController::class, 'key']);
-    Route::post('/push/subscribe', [PushController::class, 'subscribe']);
-    Route::delete('/push/subscribe', [PushController::class, 'unsubscribe']);
 });

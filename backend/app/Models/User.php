@@ -11,7 +11,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password', 'timezone', 'reminder_enabled', 'reminder_time'])]
+#[Fillable(['name', 'email', 'password', 'timezone'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -23,8 +23,6 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
-            'reminder_enabled' => 'boolean',
-            'last_reminded_on' => 'date',
             'last_reviewed_on' => 'date',
         ];
     }
@@ -64,9 +62,9 @@ class User extends Authenticatable
         return $this->hasMany(Statement::class);
     }
 
-    public function pushSubscriptions(): HasMany
+    public function activityDays(): HasMany
     {
-        return $this->hasMany(PushSubscription::class);
+        return $this->hasMany(ActivityDay::class);
     }
 
     public function toApi(): array
@@ -76,8 +74,6 @@ class User extends Authenticatable
             'name' => $this->name,
             'email' => $this->email,
             'timezone' => $this->timezone,
-            'reminder_enabled' => (bool) $this->reminder_enabled,
-            'reminder_time' => $this->reminder_time,
             'last_reviewed_on' => $this->last_reviewed_on?->toDateString(),
         ];
     }

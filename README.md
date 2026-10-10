@@ -58,8 +58,6 @@ Open http://localhost:3000, create an account, and tap **+**.
 | `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` | Database (`sqlite`, `mysql` or `pgsql`) |
 | `FRONTEND_URL` | Frontend origin(s) allowed by CORS, comma-separated, e.g. `https://trackaa.vercel.app` |
 | `MAIL_MAILER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_ADDRESS` | Sends password-reset emails. Any SMTP provider works (Resend, Mailgun, Brevo, Gmail SMTP). Locally `MAIL_MAILER=log` writes the email to `storage/logs/laravel.log` |
-| `CRON_SECRET` | Enables `/api/cron/reminders?token=…`, for hosts without a scheduler (Render free plan) |
-| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | *Optional.* Push-reminder keys. If unset, a key pair is generated automatically and stored in the database |
 
 ### frontend/.env.local
 
@@ -73,7 +71,7 @@ No secrets live in the frontend. The only browser-side value is the public API U
 
 ## Deploying on Render (recommended)
 
-The repo is ready for Render: one **free web service** runs the website and the API together (`Dockerfile` + `render.yaml`). You need two other free accounts: a database (Neon) and a pinger (cron-job.org).
+The repo is ready for Render: one **free web service** runs the website and the API together (`Dockerfile` + `render.yaml`). You also need a free database account (Neon). No pinger is needed.
 
 ### 1. Create the database (Neon, free, never expires)
 Render's own free Postgres is deleted after 30 days, so use Neon (or a *paid* Render Postgres).
@@ -85,24 +83,14 @@ Render's own free Postgres is deleted after 30 days, so use Neon (or a *paid* Re
 ### 2. Deploy the Blueprint
 1. Push this code to your GitHub `main` branch.
 2. Render dashboard → **New** → **Blueprint** → connect the `trackaa` repo → it reads `render.yaml`.
-3. When asked for **`DB_URL`**, paste the connection string from step 1. `APP_KEY` and `CRON_SECRET` are generated for you.
+3. When asked for **`DB_URL`**, paste the connection string from step 1. `APP_KEY` is generated for you.
 4. **Apply**. The first build takes about 5–10 minutes. When it says *Live*, open `https://<your-service>.onrender.com`, create your account, and record a transaction.
 
 Every start runs database migrations automatically. Every push to `main` redeploys.
 
-### 3. Phone reminders (optional, cron-job.org, free)
-Free Render services sleep after 15 minutes without visits. The first visit after that takes about a minute while the app wakes up; after that it's fast. That's fine for personal use. **A sleeping app can't send push reminders**, though; the in-app reminder banner still works.
+Free Render services sleep after 15 minutes without visits. The first visit after that takes about a minute while the app wakes up; after that it's fast. That's fine for personal use, so there's no need to keep it awake (a pinger would also keep Neon awake and use up its free compute).
 
-For phone reminders, wake the app at reminder time instead of keeping it awake all day. A pinger every few minutes would also keep the Neon database awake 24/7, and that alone uses more than Neon's free monthly compute.
-1. In Render → your service → **Environment**, copy the value of `CRON_SECRET`.
-2. At cron-job.org → **Create cronjob**:
-   - URL: `https://<your-service>.onrender.com/api/cron/reminders?token=<CRON_SECRET>`
-   - Schedule: **custom**, at the reminder time **and 5 minutes later**, e.g. `0,5 20 * * *` for 20:00 and 20:05. The first call wakes the app (it may time out); the second sends.
-   - Make sure the cron-job.org time zone matches yours (Ghana = UTC / GMT).
-
-Everyone whose reminder time has passed and who hasn't reviewed today gets it on that run. If your friends pick different times, add one pair of runs per time. Or pick one shared time, say 20:00.
-
-### 4. Password-reset emails (optional but recommended)
+### 3. Password-reset emails (optional but recommended)
 In Render → **Environment**, add your email provider's SMTP details, then **Save** (it redeploys). Resend and Brevo both have free tiers.
 
 ```
@@ -112,24 +100,21 @@ MAIL_USERNAME=...    MAIL_PASSWORD=...
 MAIL_FROM_ADDRESS=you@yourdomain.com
 ```
 
-### 5. On your phone
-- Open the site and add it to your Home Screen. On iPhone: Share → *Add to Home Screen*.
-- In Settings, turn on **Phone notifications**.
-
-Push keys are created automatically and stored in the database. Set `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` only if you want to manage them yourself.
+### 4. On your phone
+Open the site and add it to your Home Screen. On iPhone: Share → *Add to Home Screen*.
 
 ### Custom domain (optional)
 Render → service → **Settings → Custom Domains**. After adding one, set `APP_URL=https://yourdomain.com` in Environment.
 
 ### Other hosts
-The same `Dockerfile` runs on any Docker host (Fly.io, Railway, a VPS). Set `APP_KEY`, `DB_CONNECTION=pgsql`, `DB_URL`, `APP_URL`, `APP_ENV=production` and `APP_DEBUG=false`. For reminders, either call `/api/cron/reminders?token=…` on a schedule, or run `php artisan schedule:run` every minute.
+The same `Dockerfile` runs on any Docker host (Fly.io, Railway, a VPS). Set `APP_KEY`, `DB_CONNECTION=pgsql`, `DB_URL`, `APP_URL`, `APP_ENV=production` and `APP_DEBUG=false`.
 
 To host the website separately (e.g. on Vercel), build `frontend` with `NEXT_PUBLIC_API_URL=https://<api>/api` (output is static files in `frontend/out`) and set `FRONTEND_URL` on the API to the website's address.
 
 ## Testing
 
 ```bash
-cd backend && php artisan test      # 28 feature tests
+cd backend && php artisan test      # 29 feature tests
 cd frontend && npm test && npm run lint && npx tsc --noEmit && npm run build
 ```
 
@@ -150,7 +135,8 @@ The backend tests cover:
 - the server-side end-of-day review
 - the CSV export
 - category usage ranking
-- automatic push keys
+- streaks, levels and badges; check-ins only for today or yesterday
+- deleting accounts, businesses and categories only when unused (otherwise archive)
 - budgets: overall and per-category, by scope, with daily, weekly and monthly breakdown and "safe to spend per day"
 - goals: progress, required weekly and monthly saving, projected finish date
 - insights: monthly cash flow, daily spending, weekday pattern, category changes vs last month
@@ -172,10 +158,10 @@ The suite passes on both SQLite and PostgreSQL.
 | `accounts` | `user_id`, `name`, `account_type` (mobile_money / cash / bank / other), `opening_balance` (pesewas), `archived_at` |
 | `businesses` | `user_id`, `name`, `archived_at` |
 | `categories` | `user_id` (nullable, reserved for future shared defaults), `name`, `transaction_type`, `archived_at` |
-| `push_subscriptions` | browser push endpoints for reminders |
-| `users` | plus `timezone`, `reminder_enabled`, `reminder_time` |
+| `activity_days` | one row per day you logged something or checked in (`logged` / `checkin`); drives streaks |
+| `users` | plus `timezone`, `last_reviewed_on` |
 
-New users get their own copy of the default categories, the businesses (MachineWura, MediaWura, SneakersInn, Paylead, Other) and the accounts (Mobile Money, Cash, Bank). That way each user can rename or archive them.
+New users get their own copy of the default categories and accounts (Mobile Money, Cash, Bank), then a short **welcome** flow: switch off accounts they don't use, set opening balances, add their own businesses (or none, which hides every Personal/Business control), and optionally set a monthly budget. Everything can be renamed, archived, or deleted while unused.
 
 ### Security
 
@@ -221,13 +207,20 @@ Login and register are rate-limited.
 
 ### Quick Add
 
-- **Phones get a built-in number keypad**, so the system keyboard never covers the form. The amount stays pinned at the top and the keypad and Save at the bottom.
+- **On phones it's two roomy steps**: first the amount on a big built-in keypad (the system keyboard never opens), then the details: category tiles, plus pills for account, date, note and (if you have businesses) Personal/Business.
 - **Categories are icon tiles, sorted by how often you've used them** in the last 90 days.
 - Every new entry starts as **Expense**, so income is always a deliberate tap. Your last account, scope, business and category per type are remembered.
 - On desktop you type the amount directly. Press **N** anywhere to open Quick Add, and **Enter** saves.
 - Every submit carries a `client_ref` UUID, so a double tap or a network retry can't create duplicates.
-- After saving, a toast offers **Undo**.
+- After saving, a success screen shows the amount and your streak, with **Undo**, **Add another** and **Done**. Phones get a little vibration; milestones get confetti.
 - **Offline**: with no connection, the transaction is kept on the phone and synced automatically when you're back online. The same `client_ref` makes the retry safe.
+
+### Streaks and badges
+
+- A day counts when you record a transaction, or tap **"I spent nothing today"** (Today card or Today's review, for today or yesterday only).
+- The flame chip shows your streak; tap it for your week, level (Newcomer → Cedi Sensei, by active days) and badges.
+- New badges pop up once per device, batched together, and never on top of an open sheet.
+- There are no notifications: the habit is opening the app when you spend.
 
 ### API
 
@@ -235,19 +228,20 @@ All endpoints need a bearer token except the two auth routes.
 
 ```
 POST   /api/auth/register  /api/auth/login  /api/auth/logout
-GET    /api/me            PATCH /api/me              (name, timezone, reminder settings)
+GET    /api/me            PATCH /api/me              (name, timezone)
 GET    /api/overview      ?scope=&business_id=&period=today|week|month|custom&from=&to=&tz=
 GET    /api/transactions  ?q=&type=&scope=&business_id=&category_id=&account_id=&from=&to=&page=
 POST   /api/transactions  PATCH/DELETE /api/transactions/{id}
-GET|POST /api/accounts | /api/businesses | /api/categories   PATCH /{id} (rename, archived: true|false)
-GET    /api/push/key      POST|DELETE /api/push/subscribe
+GET|POST /api/accounts | /api/businesses | /api/categories   PATCH|DELETE /{id} (rename, archived: true|false; delete only if unused)
+GET    /api/progress      streak, week, level, badges
+POST   /api/review        { date }  check in (today or yesterday)
 ```
 
 ---
 
 ## Known limitations
 
-- **Push reminders need something to trigger them**: scheduled cron-job.org calls on Render (see above), or the Laravel scheduler elsewhere. On Render's free plan the app sleeps when idle, so the first visit after a quiet spell takes about a minute. On iPhone, Web Push also requires adding the app to the Home Screen (iOS 16.4+). Otherwise you get the in-app banner after your reminder time.
+- **On Render's free plan the app sleeps when idle**, so the first visit after a quiet spell takes about a minute.
 - **Password-reset emails need an SMTP provider** configured (`MAIL_*`).
 - **Login tokens are kept in `localStorage`.** They expire after 90 days of not being used. Fine for a personal tool; for extra hardening, switch to cookie-based Sanctum SPA auth.
 - **Offline**: new transactions are queued while offline. Editing or deleting an existing transaction still needs a connection.

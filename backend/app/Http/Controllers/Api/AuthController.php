@@ -101,16 +101,10 @@ class AuthController extends Controller
         $data = $request->validate([
             'name' => ['sometimes', 'string', 'max:100'],
             'timezone' => ['sometimes', 'timezone:all'],
-            'reminder_enabled' => ['sometimes', 'boolean'],
-            'reminder_time' => ['sometimes', 'date_format:H:i'],
         ]);
 
         $user = $request->user();
-        $user->fill($data);
-        if ($user->isDirty(['reminder_time', 'timezone'])) {
-            $user->last_reminded_on = null; // allow a reminder at the new time today
-        }
-        $user->save();
+        $user->fill($data)->save();
 
         return response()->json($user->toApi());
     }
@@ -130,12 +124,20 @@ class AuthController extends Controller
         return response()->json(null, 204);
     }
 
-    /** Mark a day's end-of-day review as done (a date in the user's timezone). */
+    /**
+     * Check in for a day ("nothing else to add" / "no spending today"). Keeps the
+     * streak alive on days with nothing to record. Only today or yesterday.
+     */
     public function review(Request $request): JsonResponse
     {
-        $data = $request->validate(['date' => ['required', 'date_format:Y-m-d']]);
         $user = $request->user();
+        $today = now($user->timezone)->toDateString();
+        $yesterday = now($user->timezone)->subDay()->toDateString();
+        $data = $request->validate(['date' => ['required', 'date_format:Y-m-d', 'in:'.$today.','.$yesterday]], [
+            'date.in' => 'You can only check in for today or yesterday.',
+        ]);
         $user->forceFill(['last_reviewed_on' => $data['date']])->save();
+        $user->activityDays()->firstOrCreate(['day' => $data['date']], ['kind' => 'checkin']);
 
         return response()->json($user->toApi());
     }

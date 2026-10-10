@@ -1,63 +1,73 @@
 @import "tailwindcss";
 @import "@fontsource-variable/inter";
+@import "@fontsource-variable/bricolage-grotesque";
 
 /* Tailwind's dark: variant follows our theme switch (system / light / dark). */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
+/* Visual language borrowed from Paylead: deep teal, neon mint, warm paper, hard offset shadows. */
 :root {
   color-scheme: light;
-  --bg: #f4f5f7;
+  --bg: #f6f5f0;
   --surface: #ffffff;
-  --surface-2: #f1f2f5;
-  --surface-3: #e8eaef;
-  --border: #e7e9ee;
-  --text: #0c0e12;
-  --muted: #6b7280;
-  --subtle: #9ca3af;
-  --income: #0b9b55;
-  --income-soft: #e6f6ed;
-  --expense: #e1474c;
-  --expense-soft: #fdeced;
-  --transfer: #4b67e8;
-  --transfer-soft: #edf0fd;
-  --accent: #0c0e12;
+  --surface-2: #f1f0ea;
+  --surface-3: #e6e4dc;
+  --border: #e6e3da;
+  --text: #0d2b28;
+  --muted: #5e6b67;
+  --subtle: #97a19d;
+  --income: #0a8a47;
+  --income-soft: #e3f6ea;
+  --expense: #dc3f45;
+  --expense-soft: #fdebec;
+  --transfer: #3f5fe0;
+  --transfer-soft: #ecf0fd;
+  --accent: #0d2b28;          /* deep teal: chips, dark controls */
   --accent-fg: #ffffff;
-  --hero: #0f1115;
+  --brand: #2ff26c;           /* neon mint: primary actions */
+  --brand-ink: #0b2b27;       /* text + outline + hard shadow on brand */
+  --brand-soft: #dcfde7;
+  --hero: #0f2d2a;
   --hero-fg: #ffffff;
-  --hero-muted: #9ca3af;
-  --hero-line: rgba(255, 255, 255, 0.08);
-  --deemph: #c7ccd4;
-  --grid: #eceef2;
-  --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.04);
-  --shadow-lg: 0 10px 30px -10px rgba(16, 24, 40, 0.25);
+  --hero-muted: #9fb6b0;
+  --hero-line: rgba(255, 255, 255, 0.09);
+  --nav: #0f2d2a;
+  --deemph: #cdd3cf;
+  --grid: #eceae3;
+  --shadow: 0 1px 2px rgba(13, 43, 40, 0.04), 0 1px 3px rgba(13, 43, 40, 0.05);
+  --shadow-lg: 0 14px 34px -14px rgba(13, 43, 40, 0.35);
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #08090b;
-  --surface: #121317;
-  --surface-2: #1a1b20;
-  --surface-3: #24262c;
-  --border: #22242a;
-  --text: #f3f4f6;
-  --muted: #9ca3af;
-  --subtle: #6b7280;
-  --income: #34d399;
-  --income-soft: #0f2a1e;
+  --bg: #091816;
+  --surface: #0f221f;
+  --surface-2: #152c28;
+  --surface-3: #1d3833;
+  --border: #1d3531;
+  --text: #ecf5f1;
+  --muted: #9bb2ab;
+  --subtle: #66807a;
+  --income: #3ee08a;
+  --income-soft: #0e2d1f;
   --expense: #fb7185;
   --expense-soft: #2c1418;
   --transfer: #8ea2fb;
   --transfer-soft: #1a1f3d;
-  --accent: #f3f4f6;
-  --accent-fg: #08090b;
-  --hero: #17181d;
-  --hero-fg: #f3f4f6;
-  --hero-muted: #9ca3af;
-  --hero-line: rgba(255, 255, 255, 0.07);
-  --deemph: #3b3f48;
-  --grid: #1f2127;
+  --accent: #ecf5f1;
+  --accent-fg: #091816;
+  --brand: #2ff26c;
+  --brand-ink: #062320;
+  --brand-soft: #0f3a26;
+  --hero: #12332f;
+  --hero-fg: #ecf5f1;
+  --hero-muted: #9bb2ab;
+  --hero-line: rgba(255, 255, 255, 0.08);
+  --nav: #0b201d;
+  --deemph: #2a4440;
+  --grid: #18302c;
   --shadow: none;
-  --shadow-lg: 0 10px 30px -10px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 14px 34px -14px rgba(0, 0, 0, 0.7);
 }
 
 @theme inline {
@@ -77,6 +87,10 @@
   --color-transfer-soft: var(--transfer-soft);
   --color-accent: var(--accent);
   --color-accent-fg: var(--accent-fg);
+  --color-brand: var(--brand);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-soft: var(--brand-soft);
+  --color-nav: var(--nav);
   --color-hero: var(--hero);
   --color-hero-fg: var(--hero-fg);
   --color-hero-muted: var(--hero-muted);
@@ -85,10 +99,12 @@
   --color-grid: var(--grid);
   --shadow-card: var(--shadow);
   --shadow-float: var(--shadow-lg);
+  --font-display: "Bricolage Grotesque Variable", "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --animate-sheet-in: sheet-in 260ms cubic-bezier(0.32, 0.72, 0, 1);
   --animate-fade-in: fade-in 200ms ease-out;
-  --animate-pop: pop 180ms ease-out;
+  --animate-pop: pop 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  --animate-bump: bump 160ms ease-out;
 }
 
 @keyframes sheet-in {
@@ -98,6 +114,13 @@
 @keyframes fade-in {
   from { opacity: 0; }
   to { opacity: 1; }
+}
+@keyframes bump {
+  from { transform: scale(1.07); }
+  to { transform: scale(1); }
+}
+@keyframes draw {
+  to { stroke-dashoffset: 0; }
 }
 @keyframes pop {
   from { transform: translateY(8px) scale(0.98); opacity: 0; }
@@ -148,3 +171,27 @@ body[data-sheet="open"] .toast-wrap {
   top: max(0.75rem, env(safe-area-inset-top));
   bottom: auto;
 }
+
+/* Success tick draws itself in. */
+.draw-check path {
+  stroke-dasharray: 30;
+  stroke-dashoffset: 30;
+  animation: draw 420ms ease-out 160ms forwards;
+}
+
+/* Paylead-style "pressable" control: dark outline + hard offset shadow that collapses on press. */
+.pop {
+  border: 2px solid var(--brand-ink);
+  box-shadow: 3px 3px 0 0 var(--brand-ink);
+  transition: transform 90ms ease, box-shadow 90ms ease;
+}
+.pop:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 0 var(--brand-ink);
+}
+.pop:disabled { box-shadow: none; }
+:root[data-theme="dark"] .pop { border-color: #000; box-shadow: 3px 3px 0 0 #000; }
+:root[data-theme="dark"] .pop:active:not(:disabled) { box-shadow: 1px 1px 0 0 #000; }
+
+/* Headlines: heavy and tight. */
+h1, .font-display { font-family: var(--font-display); letter-spacing: -0.03em; }
