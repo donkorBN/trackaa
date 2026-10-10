@@ -7,6 +7,8 @@ services:
     name: trackaa
     runtime: docker
     plan: free
+    # Same region as the Neon database (AWS US East 2, Ohio) so queries stay fast.
+    region: ohio
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /up
