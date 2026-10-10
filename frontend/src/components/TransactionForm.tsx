@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowRight, Briefcase, CalendarClock, Check, ChevronDown, Delete, Flame, PenLine, Plus, Trash2, Undo2, User } from "lucide-react";
+import { ArrowRight, Briefcase, CalendarClock, Check, ChevronDown, Delete, Flame, type LucideIcon, PenLine, Plus, Trash2, Undo2, User } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api, ApiError } from "@/lib/api";
 import { dateTimeLabel, toLocalInput } from "@/lib/dates";
@@ -10,9 +10,9 @@ import { formatGHS, parseAmount, toInputString } from "@/lib/money";
 import { enqueue } from "@/lib/offline";
 import { loadDefaults, saveDefaults } from "@/lib/prefs";
 import type { Account, Business, Category, Ref, Scope, Transaction, TxInput, TxType } from "@/lib/types";
-import { ACCOUNT_ICON, categoryVisual, IconBubble, TransferIcon } from "@/lib/visuals";
+import { ACCOUNT_ICON, categoryIcon, TransferIcon } from "@/lib/visuals";
 import { useToast } from "./toast";
-import { cx, FormError, Input, Segmented, Spinner } from "./ui";
+import { Button, Chip, cx, FormError, Glyph, IconTile, Input, ListCard, ListRow, Segmented, Spinner } from "./ui";
 
 const TYPE_OPTIONS: { value: TxType; label: string }[] = [
   { value: "expense", label: "Expense" },
@@ -20,8 +20,8 @@ const TYPE_OPTIONS: { value: TxType; label: string }[] = [
   { value: "transfer", label: "Transfer" },
 ];
 
-const TONE_TEXT = { income: "text-income", expense: "text-expense", transfer: "text-transfer" } as const;
-const TONE_BG = { income: "bg-income", expense: "bg-expense", transfer: "bg-transfer" } as const;
+// Money figures keep their meaning colour; transfers are neutral ink.
+const TONE_TEXT = { income: "text-income", expense: "text-expense", transfer: "text-ink" } as const;
 const STREAK_MILESTONES = [3, 7, 14, 30, 60, 100, 365];
 
 type Panel = "none" | "account" | "to" | "scope" | "date" | "note";
@@ -292,8 +292,8 @@ export function TransactionForm({ tx, onDone }: { tx?: Transaction; onDone: () =
         <Segmented value={type} options={TYPE_OPTIONS} onChange={setType} />
         <div className="flex min-h-[9rem] flex-1 flex-col items-center justify-center">
           <div className={cx("flex items-baseline justify-center gap-2", TONE_TEXT[type])}>
-            <span className="text-[28px] font-semibold opacity-70">GH₵</span>
-            <span key={bump} aria-live="polite" aria-label="Amount" className={cx("font-display animate-bump text-[68px] leading-none font-extrabold", !amount && "opacity-25")}>
+            <span className="font-display text-[28px] font-bold opacity-70">GH₵</span>
+            <span key={bump} aria-live="polite" aria-label="Amount" className={cx("font-display tabular animate-bump text-[68px] leading-none font-extrabold", !amount && "opacity-25")}>
               {displayAmount(amount)}
             </span>
           </div>
@@ -307,27 +307,24 @@ export function TransactionForm({ tx, onDone }: { tx?: Transaction; onDone: () =
                 type="button"
                 onClick={() => key(k)}
                 aria-label={k === "back" ? "Delete digit" : k}
-                className="flex h-16 items-center justify-center rounded-2xl bg-surface-2/70 text-[26px] font-medium text-ink transition select-none active:scale-95 active:bg-surface-3 [@media(max-height:700px)]:h-12"
+                className="font-display tabular flex h-16 items-center justify-center rounded-control bg-surface-2 text-[28px] font-semibold text-ink transition select-none hover:bg-surface-3 active:scale-95 active:bg-surface-3 [@media(max-height:700px)]:h-12"
               >
                 {k === "back" ? <Delete size={24} /> : k}
               </button>
             ))}
           </div>
-          <button
-            type="button"
+          <Button
+            size="lg"
             disabled={!ready}
             onClick={() => {
               haptic.tap();
               setError(null);
               setStage("details");
             }}
-            className={cx(
-              "pop flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-[17px] font-bold text-white disabled:opacity-40",
-              TONE_BG[type],
-            )}
+            className="h-14 w-full text-[17px]"
           >
             Next <ArrowRight size={19} />
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -346,16 +343,16 @@ export function TransactionForm({ tx, onDone }: { tx?: Transaction; onDone: () =
               haptic.tap();
               setStage("amount");
             }}
-            className="mx-auto mt-5 mb-4 flex items-center gap-2 rounded-2xl px-3 py-1 active:scale-95"
+            className="mx-auto mt-5 mb-4 flex items-center gap-2 rounded-control px-3 py-1 transition hover:bg-surface-2 active:scale-95"
             aria-label="Change amount"
           >
-            <span className={cx("font-display text-[42px] leading-none font-extrabold", TONE_TEXT[type])}>{formatGHS(pesewas ?? 0)}</span>
+            <span className={cx("font-display tabular text-[42px] leading-none font-extrabold", TONE_TEXT[type])}>{formatGHS(pesewas ?? 0)}</span>
             <PenLine size={16} className="text-subtle" />
           </button>
         ) : (
           <div className="flex flex-col items-center pt-6 pb-5">
             <label className={cx("flex items-baseline justify-center gap-2", TONE_TEXT[type])}>
-              <span className="text-2xl font-semibold opacity-70">GH₵</span>
+              <span className="font-display text-2xl font-bold opacity-70">GH₵</span>
               <input
                 ref={amountRef}
                 autoFocus
@@ -366,7 +363,7 @@ export function TransactionForm({ tx, onDone }: { tx?: Transaction; onDone: () =
                 value={amount}
                 onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ""))}
                 style={{ width: `${Math.max(amount.length, 1) + 0.6}ch` }}
-                className="min-w-[2ch] bg-transparent text-left text-[52px] leading-none font-bold tracking-tight outline-none placeholder:opacity-25"
+                className="font-display tabular min-w-[2ch] bg-transparent text-left text-[52px] leading-none font-extrabold outline-none placeholder:text-current placeholder:opacity-25"
               />
             </label>
           </div>
@@ -404,12 +401,11 @@ export function TransactionForm({ tx, onDone }: { tx?: Transaction; onDone: () =
             items={accountList
               .filter((a) => panel !== "to" || a.id !== accountId)
               .map((a) => {
-                const Icon = ACCOUNT_ICON[(a as Account).account_type ?? "other"];
                 return {
                   id: a.id,
                   label: a.name,
                   sub: "balance" in a ? `Recorded balance ${formatGHS(a.balance)}` : undefined,
-                  icon: <Icon size={18} />,
+                  icon: ACCOUNT_ICON[(a as Account).account_type ?? "other"],
                 };
               })}
             selected={panel === "to" ? toAccountId : accountId}
@@ -443,7 +439,7 @@ export function TransactionForm({ tx, onDone }: { tx?: Transaction; onDone: () =
           />
         ) : panel === "date" ? (
           <div className="space-y-3">
-            <div className="text-[13px] font-medium text-muted">When did it happen?</div>
+            <div className="eyebrow">When did it happen?</div>
             <div className="flex flex-wrap gap-2">
               <Pill active={!when} onClick={() => setWhen(null)}>
                 Now
@@ -464,7 +460,7 @@ export function TransactionForm({ tx, onDone }: { tx?: Transaction; onDone: () =
           </div>
         ) : panel === "note" ? (
           <div className="space-y-3">
-            <div className="text-[13px] font-medium text-muted">Add a note</div>
+            <div className="eyebrow">Add a note</div>
             <Input
               autoFocus
               value={description}
@@ -482,18 +478,15 @@ export function TransactionForm({ tx, onDone }: { tx?: Transaction; onDone: () =
             <DoneButton onClick={() => setPanel("none")} />
           </div>
         ) : type === "transfer" ? (
-          <div className="flex h-full flex-col items-center justify-center gap-2 py-6 text-center">
-            <span className="flex h-14 w-14 items-center justify-center rounded-full bg-transfer-soft text-transfer">
-              <TransferIcon size={24} />
-            </span>
-            <p className="max-w-xs text-sm text-muted">Moving money between your own accounts. It won&apos;t count as income or spending.</p>
+          <div className="flex h-full flex-col items-center justify-center gap-3 py-6 text-center">
+            <Glyph icon={TransferIcon} size={56} />
+            <p className="max-w-xs text-[13.5px] leading-relaxed text-muted">Moving money between your own accounts. It won&apos;t count as income or spending.</p>
           </div>
         ) : loading ? (
           <div className="h-40" />
         ) : (
           <div className="grid grid-cols-4 gap-x-2 gap-y-4 sm:grid-cols-5">
             {typeCategories.map((c) => {
-              const v = categoryVisual(c.name);
               const active = categoryId === c.id;
               return (
                 <button
@@ -505,12 +498,10 @@ export function TransactionForm({ tx, onDone }: { tx?: Transaction; onDone: () =
                     amountRef.current?.focus(); // desktop: keep Enter = save
                   }}
                   aria-pressed={active}
-                  className="flex flex-col items-center gap-1.5 rounded-2xl py-1 transition active:scale-90"
+                  className="flex flex-col items-center gap-1.5 rounded-control py-1 transition active:scale-95"
                 >
-                  <span className={cx("rounded-full transition-transform duration-200", active && "scale-110")}>
-                    <IconBubble Icon={v.Icon} color={v.color} size={52} active={active} />
-                  </span>
-                  <span className={cx("line-clamp-2 px-0.5 text-center text-[11.5px] leading-tight", active ? "font-semibold text-ink" : "text-muted")}>
+                  <Glyph icon={categoryIcon(c.name)} size={52} active={active} />
+                  <span className={cx("line-clamp-2 px-0.5 text-center text-[11.5px] leading-tight", active ? "font-bold text-ink" : "font-medium text-muted")}>
                     {c.name}
                   </span>
                 </button>
@@ -529,60 +520,43 @@ export function TransactionForm({ tx, onDone }: { tx?: Transaction; onDone: () =
       <div className="-mx-5 shrink-0 space-y-3 border-t border-line bg-surface px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
         <div className="flex gap-2">
           {editing && (
-            <button
-              type="button"
+            <Button
+              variant="danger"
+              size="lg"
               onClick={remove}
               disabled={saving}
               aria-label={confirmDelete ? "Confirm delete" : "Delete"}
-              className={cx(
-                "flex h-14 items-center justify-center gap-2 rounded-2xl px-4 text-sm font-semibold transition",
-                confirmDelete ? "bg-expense text-white" : "bg-expense-soft text-expense",
-              )}
+              className={cx("h-14", confirmDelete && "border-expense")}
             >
               <Trash2 size={18} />
               {confirmDelete && "Delete?"}
-            </button>
+            </Button>
           )}
-          <button
-            type="submit"
-            disabled={saving}
-            className={cx(
-              "pop flex h-14 flex-1 items-center justify-center gap-2 rounded-2xl text-[17px] font-bold text-white disabled:opacity-60",
-              TONE_BG[type],
-            )}
-          >
+          <Button type="submit" size="lg" disabled={saving} className="h-14 flex-1 text-[17px]">
             {saving && <Spinner />}
             {editing ? "Save changes" : pesewas ? `Save ${formatGHS(pesewas)}` : `Save ${type}`}
-          </button>
+          </Button>
         </div>
       </div>
     </form>
   );
 }
 
+/** Detail pill: a kit Chip with a disclosure chevron. */
 function Pill({ active, onClick, icon, children }: { active?: boolean; onClick: () => void; icon?: ReactNode; children: ReactNode }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cx(
-        "inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[13.5px] font-medium transition active:scale-95",
-        active ? "border-accent bg-accent text-accent-fg" : "border-line bg-surface-2/60 text-ink",
-      )}
-    >
-      {icon}
+    <Chip active={active} onClick={onClick} icon={icon}>
       {children}
-      <ChevronDown size={14} className={cx("opacity-50 transition-transform", active && "rotate-180")} />
-    </button>
+      <ChevronDown size={14} className={cx("opacity-60 transition-transform", active && "rotate-180")} />
+    </Chip>
   );
 }
 
 function DoneButton({ onClick }: { onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="h-11 w-full rounded-xl bg-surface-2 text-sm font-semibold">
+    <Button variant="secondary" onClick={onClick} className="w-full">
       Done
-    </button>
+    </Button>
   );
 }
 
@@ -593,30 +567,25 @@ function PickerList({
   onPick,
 }: {
   title: string;
-  items: { id: number; label: string; sub?: string; icon: ReactNode }[];
+  items: { id: number; label: string; sub?: string; icon: LucideIcon }[];
   selected: number | null;
   onPick: (id: number) => void;
 }) {
   return (
     <div>
-      <div className="mb-2 text-[13px] font-medium text-muted">{title}</div>
-      <div className="overflow-hidden rounded-2xl border border-line">
+      <div className="eyebrow mb-2 px-0.5">{title}</div>
+      <ListCard>
         {items.map((it) => (
-          <button
+          <ListRow
             key={it.id}
-            type="button"
             onClick={() => onPick(it.id)}
-            className={cx("flex w-full items-center gap-3 border-b border-line px-4 py-3.5 text-left last:border-b-0", selected === it.id ? "bg-surface-2" : "hover:bg-surface-2")}
-          >
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface-2 text-ink">{it.icon}</span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-[15px] font-medium">{it.label}</span>
-              {it.sub && <span className="block text-xs text-muted">{it.sub}</span>}
-            </span>
-            {selected === it.id && <Check size={18} className="text-income" strokeWidth={3} />}
-          </button>
+            leading={<Glyph icon={it.icon} size={38} active={selected === it.id} />}
+            title={it.label}
+            meta={it.sub}
+            trailing={selected === it.id ? <Check size={18} className="text-ink" strokeWidth={3} aria-label="Selected" /> : null}
+          />
         ))}
-      </div>
+      </ListCard>
     </div>
   );
 }
@@ -650,8 +619,8 @@ function ScopePanel({
       <PickerList
         title="Who is this for?"
         items={[
-          { id: 0, label: "Personal", sub: "My own money", icon: <User size={18} /> },
-          ...businesses.map((b) => ({ id: b.id, label: b.name, sub: "Business", icon: <Briefcase size={18} /> })),
+          { id: 0, label: "Personal", sub: "My own money", icon: User },
+          ...businesses.map((b) => ({ id: b.id, label: b.name, sub: "Business", icon: Briefcase })),
         ]}
         selected={scope === "personal" ? 0 : businessId}
         onPick={(id) => (id === 0 ? onPick("personal", null) : onPick("business", id))}
@@ -670,9 +639,9 @@ function ScopePanel({
           maxLength={80}
           className="min-w-0 flex-1"
         />
-        <button type="button" onClick={create} disabled={!name.trim() || busy} className="flex h-11 items-center gap-1 rounded-xl bg-accent px-4 text-sm font-semibold text-accent-fg disabled:opacity-40">
+        <Button variant="ink" onClick={create} disabled={!name.trim() || busy} className="h-12">
           {busy ? <Spinner /> : <Plus size={16} />} Add
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -680,21 +649,27 @@ function ScopePanel({
 
 function SavedView({ saved, onUndo, onAnother, onDone }: { saved: Saved; onUndo: () => void; onAnother: () => void; onDone: () => void }) {
   const t = saved.tx;
-  const tone = t.type === "income" ? "bg-income" : t.type === "expense" ? "bg-expense" : "bg-transfer";
   const what = t.type === "transfer" ? `${t.account.name} → ${t.to_account?.name}` : (t.category?.name ?? "");
   return (
     <div className="flex flex-1 flex-col items-center justify-center py-8 text-center">
-      <div className={cx("pop flex h-24 w-24 animate-pop items-center justify-center rounded-[28px] text-white", tone)}>
-        <Check size={48} strokeWidth={3} className="draw-check" />
-      </div>
-      <div className="font-display mt-6 text-[38px] leading-none font-extrabold">{formatGHS(t.amount)}</div>
+      <span className="animate-pop">
+        <IconTile size={96}>
+          <Check size={48} strokeWidth={3} className="draw-check" />
+        </IconTile>
+      </span>
+      <div className={cx("font-display tabular mt-7 text-[38px] leading-none font-extrabold", TONE_TEXT[t.type])}>{formatGHS(t.amount)}</div>
       <div className="mt-2 text-[15px] text-muted">
         {what}
         {t.description ? ` · ${t.description}` : ""}
       </div>
 
-      <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#fff1e6] px-4 py-2 text-[14px] font-semibold text-[#c2410c] dark:bg-[#3a1d0b] dark:text-[#fdba74]">
-        <Flame size={17} fill="#f97316" color="#f97316" />
+      <div
+        className={cx(
+          "mt-6 inline-flex h-10 items-center gap-2 rounded-full px-4 text-[14px] font-bold",
+          saved.extended ? "bg-hero text-brand" : "border-[1.5px] border-line bg-surface text-muted",
+        )}
+      >
+        <Flame size={17} strokeWidth={2.25} fill={saved.extended ? "currentColor" : "none"} />
         {saved.extended
           ? saved.streak === 1
             ? "Streak started!"
@@ -703,16 +678,16 @@ function SavedView({ saved, onUndo, onAnother, onDone }: { saved: Saved; onUndo:
       </div>
 
       <div className="mt-8 flex w-full max-w-sm gap-2">
-        <button type="button" onClick={onUndo} className="flex h-12 flex-1 items-center justify-center gap-1.5 rounded-2xl bg-surface-2 text-sm font-semibold">
+        <Button variant="secondary" size="lg" onClick={onUndo} className="flex-1">
           <Undo2 size={16} /> Undo
-        </button>
-        <button type="button" onClick={onAnother} className="flex h-12 flex-1 items-center justify-center gap-1.5 rounded-2xl bg-surface-2 text-sm font-semibold">
+        </Button>
+        <Button variant="secondary" size="lg" onClick={onAnother} className="flex-1">
           <Plus size={16} /> Add another
-        </button>
+        </Button>
       </div>
-      <button type="button" onClick={onDone} className="pop mt-3 h-12 w-full max-w-sm rounded-2xl bg-brand text-[15px] font-bold text-brand-ink">
+      <Button size="lg" onClick={onDone} className="mt-3 w-full max-w-sm">
         Done
-      </button>
+      </Button>
     </div>
   );
 }

@@ -8,23 +8,30 @@ import { useEffect, useState, type ReactNode } from "react";
 import { api, ApiError, getToken, setToken } from "@/lib/api";
 import { deviceTimezone } from "@/lib/dates";
 import type { User } from "@/lib/types";
-import { Button, FormError, Input, Label, Spinner } from "./ui";
+import { Wordmark } from "./ui";
+import { Button, Card, Field, FormError, Input, Label, Spinner } from "./ui";
 
 export function AuthLayout({ title, subtitle, children, footer }: { title: string; subtitle?: string; children: ReactNode; footer?: ReactNode }) {
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center px-5 py-10">
+    <div className="flex min-h-dvh flex-col items-center justify-center bg-bg px-4 py-10">
       <div className="w-full max-w-sm animate-pop">
-        <div className="mb-8 flex flex-col items-center text-center">
-          <Image width={56} height={56} src="/icon-192.png" alt="" className="h-14 w-14 rounded-[18px] shadow-float" />
-          <h1 className="mt-6 text-[28px] leading-tight font-extrabold">{title}</h1>
-          {subtitle && <p className="mt-1.5 text-[15px] text-muted">{subtitle}</p>}
+        <Link href="/" aria-label="Trackaa home" className="mx-auto mb-10 flex w-fit items-center gap-2.5">
+          <Image width={36} height={36} src="/icon-192.png" alt="" className="h-9 w-9 rounded-tile" />
+          <Wordmark className="text-ink" />
+        </Link>
+        <div className="mb-6 text-center">
+          <h1 className="text-[34px] leading-[1.05] font-extrabold text-ink">{title}</h1>
+          {subtitle && <p className="mt-2 text-[15px] text-muted">{subtitle}</p>}
         </div>
-        <div className="rounded-[28px] border border-line bg-surface p-6 shadow-card">{children}</div>
+        <Card className="p-6">{children}</Card>
         {footer && <div className="mt-6 text-center text-sm text-muted">{footer}</div>}
       </div>
     </div>
   );
 }
+
+/** Inline text link used under auth cards: ink text with a neon underline. */
+export const authLinkClass = "font-semibold text-ink underline decoration-brand decoration-2 underline-offset-4 hover:decoration-ink";
 
 export function PasswordInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   const [show, setShow] = useState(false);
@@ -35,7 +42,7 @@ export function PasswordInput(props: React.InputHTMLAttributes<HTMLInputElement>
         type="button"
         onClick={() => setShow((s) => !s)}
         aria-label={show ? "Hide password" : "Show password"}
-        className="absolute top-1/2 right-1.5 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-subtle hover:text-ink"
+        className="absolute top-1/2 right-1.5 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-tile text-subtle transition-colors hover:bg-surface-2 hover:text-ink"
       >
         {show ? <EyeOff size={17} /> : <Eye size={17} />}
       </button>
@@ -86,31 +93,29 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       footer={
         login ? (
           <>
-            New to Trackaa? <Link href="/register" className="font-semibold text-ink">Create an account</Link>
+            New to Trackaa? <Link href="/register" className={authLinkClass}>Create an account</Link>
           </>
         ) : (
           <>
-            Already have an account? <Link href="/login" className="font-semibold text-ink">Log in</Link>
+            Already have an account? <Link href="/login" className={authLinkClass}>Log in</Link>
           </>
         )
       }
     >
       <form onSubmit={submit} className="space-y-4">
         {!login && (
-          <div>
-            <Label htmlFor="name">Your name</Label>
+          <Field label="Your name" htmlFor="name">
             <Input id="name" required autoComplete="name" value={form.name} onChange={set("name")} />
-          </div>
+          </Field>
         )}
-        <div>
-          <Label htmlFor="email">Email</Label>
+        <Field label="Email" htmlFor="email">
           <Input id="email" required type="email" autoComplete="email" inputMode="email" value={form.email} onChange={set("email")} />
-        </div>
+        </Field>
         <div>
           <div className="flex items-baseline justify-between">
             <Label htmlFor="password">Password</Label>
             {login && (
-              <Link href="/forgot-password" className="text-[13px] font-medium text-muted hover:text-ink">
+              <Link href="/forgot-password" className="text-[13px] font-semibold text-muted underline decoration-line decoration-2 underline-offset-4 hover:text-ink hover:decoration-brand">
                 Forgot?
               </Link>
             )}
@@ -123,7 +128,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
             value={form.password}
             onChange={set("password")}
           />
-          {!login && <p className="mt-1.5 text-xs text-muted">At least 8 characters.</p>}
+          {!login && <p className="mt-1.5 text-[12.5px] text-muted">At least 8 characters.</p>}
         </div>
         <FormError>{error}</FormError>
         <Button type="submit" size="lg" className="w-full" disabled={busy}>

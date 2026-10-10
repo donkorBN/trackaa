@@ -1,12 +1,15 @@
 "use client";
 
 import {
-  ChevronRight, Download, KeyRound, Trash2, LogOut, Monitor, Moon, Smartphone, Sun, type LucideIcon,
+  ChevronRight, Download, KeyRound, Trash2, LogOut, Monitor, Moon, Plus, Smartphone, Sun,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { useToast } from "@/components/toast";
-import { Button, Card, cx, FormError, Input, Label, SectionTitle, Segmented, Select, Sheet, Spinner } from "@/components/ui";
+import {
+  Button, Callout, Field, FormError, Glyph, Input, ListCard, ListRow, Monogram, Num, PageHeader, SectionTitle, Segmented, Select, Sheet,
+  Spinner, Tag, Toggle,
+} from "@/components/ui";
 import { api, apiDownload, ApiError, setToken, withQuery } from "@/lib/api";
 import { deviceTimezone } from "@/lib/dates";
 import { useAccounts, useBusinesses, useCategories, useMe, useRefreshAll } from "@/lib/hooks";
@@ -14,7 +17,7 @@ import { useInstall } from "@/lib/install";
 import { formatGHS, parseAmount, toInputString } from "@/lib/money";
 import { getThemePref, setThemePref, type ThemePref } from "@/lib/theme";
 import type { Account } from "@/lib/types";
-import { ACCOUNT_ICON, categoryVisual, IconBubble, Initials } from "@/lib/visuals";
+import { ACCOUNT_ICON, categoryIcon } from "@/lib/visuals";
 
 const ACCOUNT_TYPES: { value: Account["account_type"]; label: string }[] = [
   { value: "mobile_money", label: "Mobile Money" },
@@ -30,8 +33,8 @@ function errorText(err: unknown) {
 
 export default function SettingsPage() {
   return (
-    <div className="space-y-7">
-      <h1 className="pt-1 text-[28px] leading-tight font-bold tracking-tight">Settings</h1>
+    <div className="space-y-8">
+      <PageHeader eyebrow="Your account" title="Settings" />
       <Profile />
       <Accounts />
       <Businesses />
@@ -44,58 +47,29 @@ export default function SettingsPage() {
 
 /* ---------------- shared bits ---------------- */
 
-function Row({
-  title,
-  subtitle,
-  right,
-  leading,
-  archived,
-  onClick,
-  danger,
-}: {
-  title: ReactNode;
-  subtitle?: ReactNode;
-  right?: ReactNode;
-  leading?: ReactNode;
-  archived?: boolean;
-  onClick?: () => void;
-  danger?: boolean;
-}) {
-  const Tag = onClick ? "button" : "div";
+/** Row title with an "Archived" tag after it. */
+function ItemTitle({ children, archived }: { children: ReactNode; archived?: boolean }) {
   return (
-    <Tag
-      type={onClick ? "button" : undefined}
-      onClick={onClick}
-      className={cx("flex min-h-14 w-full items-center gap-3 px-4 py-3 text-left", onClick && "hover:bg-surface-2 active:bg-surface-2")}
-    >
-      {leading && <span className={cx(archived && "opacity-40")}>{leading}</span>}
-      <span className={cx("min-w-0 flex-1", archived && "opacity-50")}>
-        <span className={cx("block truncate text-[15px] font-medium", danger && "text-expense")}>
-          {title}
-          {archived && <span className="ml-2 rounded-md bg-surface-2 px-1.5 py-0.5 text-[11px] font-medium text-muted">Archived</span>}
-        </span>
-        {subtitle && <span className="mt-0.5 block text-xs text-muted">{subtitle}</span>}
-      </span>
-      {right}
-      {onClick && !right && <ChevronRight size={18} className="shrink-0 text-subtle" />}
-    </Tag>
-  );
-}
-
-function RowIcon({ Icon, tone = "neutral" }: { Icon: LucideIcon; tone?: "neutral" | "danger" }) {
-  return (
-    <span className={cx("flex h-9 w-9 items-center justify-center rounded-xl", tone === "danger" ? "bg-expense-soft text-expense" : "bg-surface-2 text-ink")}>
-      <Icon size={18} />
+    <span className="flex min-w-0 items-center gap-2">
+      <span className="truncate">{children}</span>
+      {archived && <Tag>Archived</Tag>}
     </span>
   );
 }
 
+const Chevron = <ChevronRight size={18} className="text-subtle" />;
+
 function AddButton({ onClick }: { onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="text-[13px] font-semibold text-transfer hover:opacity-80">
-      + Add
-    </button>
+    <Button variant="secondary" size="sm" onClick={onClick}>
+      <Plus size={15} strokeWidth={2.5} /> Add
+    </Button>
   );
+}
+
+/** Fine print under a list card. */
+function Note({ children }: { children: ReactNode }) {
+  return <p className="mt-2.5 px-1 text-[12.5px] leading-relaxed text-muted">{children}</p>;
 }
 
 function useSaver(onDone: () => void) {
@@ -129,14 +103,9 @@ function Profile() {
   if (!me) return <div className="h-20" />;
   return (
     <>
-      <Card flush>
-        <Row
-          leading={<Initials name={me.name} size={48} />}
-          title={<span className="text-[17px] font-semibold">{me.name}</span>}
-          subtitle={me.email}
-          onClick={() => setEditing(true)}
-        />
-      </Card>
+      <ListCard>
+        <ListRow leading={<Monogram name={me.name} size={48} />} title={me.name} meta={me.email} trailing={Chevron} onClick={() => setEditing(true)} />
+      </ListCard>
       <Sheet open={editing} onClose={() => setEditing(false)} title="Your name">
         {editing && <NameForm initial={me.name} onDone={() => setEditing(false)} />}
       </Sheet>
@@ -155,7 +124,7 @@ function NameForm({ initial, onDone }: { initial: string; onDone: () => void }) 
         run(() => api("/me", { method: "PATCH", body: { name: name.trim() } }), "Name updated");
       }}
     >
-      <Input required autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={100} />
+      <Input required autoFocus aria-label="Your name" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} />
       <FormError>{error}</FormError>
       <Button type="submit" size="lg" className="w-full" disabled={busy}>
         {busy && <Spinner />} Save
@@ -206,32 +175,33 @@ function Accounts() {
   return (
     <section id="accounts" className="scroll-mt-6">
       <SectionTitle action={<AddButton onClick={() => setEditing("new")} />}>Accounts</SectionTitle>
-      <Card flush className="divide-y divide-line overflow-hidden">
-        {accounts.map((a) => {
-          const Icon = ACCOUNT_ICON[a.account_type];
-          return (
-            <Row
-              key={a.id}
-              leading={<RowIcon Icon={Icon} />}
-              title={a.name}
-              subtitle={`${ACCOUNT_TYPES.find((t) => t.value === a.account_type)?.label} · opening ${formatGHS(a.opening_balance)}`}
-              archived={a.archived}
-              onClick={() => setEditing(a)}
-              right={<span className={cx("tabular text-[15px] font-semibold", a.balance < 0 && "text-expense")}>{formatGHS(a.balance)}</span>}
-            />
-          );
-        })}
+      <ListCard>
+        {accounts.map((a) => (
+          <ListRow
+            key={a.id}
+            leading={<Glyph icon={ACCOUNT_ICON[a.account_type]} />}
+            title={<ItemTitle archived={a.archived}>{a.name}</ItemTitle>}
+            meta={`${ACCOUNT_TYPES.find((t) => t.value === a.account_type)?.label} · opening ${formatGHS(a.opening_balance)}`}
+            muted={a.archived}
+            onClick={() => setEditing(a)}
+            trailing={
+              <Num tone={a.balance < 0 ? "expense" : "neutral"} className="text-[15.5px]">
+                {formatGHS(a.balance)}
+              </Num>
+            }
+          />
+        ))}
         {data && (
-          <div className="flex items-center justify-between bg-surface-2/60 px-4 py-3.5 text-[15px]">
-            <span className="font-medium">Total recorded balance</span>
-            <span className="tabular font-bold">{formatGHS(data.total_balance)}</span>
+          <div className="flex items-center justify-between gap-3 bg-surface-2 px-4 py-3.5">
+            <span className="eyebrow">Total recorded balance</span>
+            <Num className="text-[17px]">{formatGHS(data.total_balance)}</Num>
           </div>
         )}
-      </Card>
-      <p className="mt-2 px-1 text-xs text-subtle">
+      </ListCard>
+      <Note>
         Set each opening balance to what the account actually held when you started tracking. Balances are calculated from
         what you record, not pulled from MoMo or your bank.
-      </p>
+      </Note>
       <Sheet open={editing !== null} onClose={() => setEditing(null)} title={editing === "new" ? "New account" : "Edit account"}>
         {editing !== null && <AccountEditor account={editing === "new" ? null : editing} onDone={() => setEditing(null)} />}
       </Sheet>
@@ -259,12 +229,10 @@ function AccountEditor({ account, onDone }: { account: Account | null; onDone: (
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      <div>
-        <Label htmlFor="acc-name">Name</Label>
+      <Field label="Name" htmlFor="acc-name">
         <Input id="acc-name" required autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. MTN MoMo, Ecobank" maxLength={80} />
-      </div>
-      <div>
-        <Label htmlFor="acc-type">Type</Label>
+      </Field>
+      <Field label="Type" htmlFor="acc-type">
         <Select id="acc-type" value={type} onChange={(e) => setType(e.target.value as Account["account_type"])}>
           {ACCOUNT_TYPES.map((t) => (
             <option key={t.value} value={t.value}>
@@ -272,13 +240,13 @@ function AccountEditor({ account, onDone }: { account: Account | null; onDone: (
             </option>
           ))}
         </Select>
-      </div>
-      <div>
-        <Label htmlFor="acc-open">Opening balance (GH₵)</Label>
-        <Input id="acc-open" inputMode="decimal" placeholder="0.00" value={opening} onChange={(e) => setOpening(e.target.value)} />
-        <label className="mt-2 flex items-center gap-2 text-sm text-muted">
-          <input type="checkbox" checked={negative} onChange={(e) => setNegative(e.target.checked)} className="h-4 w-4" /> This account was overdrawn / owed
-        </label>
+      </Field>
+      <Field label="Opening balance (GH₵)" htmlFor="acc-open">
+        <Input id="acc-open" inputMode="decimal" placeholder="0.00" className="tabular w-full" value={opening} onChange={(e) => setOpening(e.target.value)} />
+      </Field>
+      <div className="flex items-center justify-between gap-3 rounded-control bg-surface-2 px-3.5 py-3">
+        <span className="text-[14px] font-semibold text-ink">This account was overdrawn / owed</span>
+        <Toggle checked={negative} onChange={setNegative} label="This account was overdrawn / owed" />
       </div>
       <FormError>{error}</FormError>
       <div className="flex gap-2">
@@ -324,11 +292,10 @@ function NameEditor({ item, endpoint, extra, noun, onDone }: { item: NamedItem |
       }}
       className="space-y-4"
     >
-      <div>
-        <Label htmlFor="name-edit">Name</Label>
+      <Field label="Name" htmlFor="name-edit">
         <Input id="name-edit" required autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
-      </div>
-      {item && <p className="text-xs text-muted">Archiving hides it from Quick Add. Past transactions keep it.</p>}
+      </Field>
+      {item && <Callout>Archiving hides it from Quick Add. Past transactions keep it.</Callout>}
       <FormError>{error}</FormError>
       <div className="flex gap-2">
         {item && <DeleteButton path={`${endpoint}/${item.id}`} noun={noun} onDone={onDone} />}
@@ -356,16 +323,23 @@ function Businesses() {
   return (
     <section>
       <SectionTitle action={<AddButton onClick={() => setEditing("new")} />}>Businesses</SectionTitle>
-      <Card flush className="divide-y divide-line overflow-hidden">
+      <ListCard>
         {businesses.length === 0 && (
-          <p className="px-4 py-4 text-sm text-muted">
+          <p className="px-4 py-4 text-[13.5px] leading-relaxed text-muted">
             Run a business or side hustle? Add it to track its money separately from yours. If you don&apos;t, you&apos;ll never see business options.
           </p>
         )}
         {businesses.map((b) => (
-          <Row key={b.id} leading={<Initials name={b.name} />} title={b.name} archived={b.archived} onClick={() => setEditing(b)} />
+          <ListRow
+            key={b.id}
+            leading={<Monogram name={b.name} />}
+            title={<ItemTitle archived={b.archived}>{b.name}</ItemTitle>}
+            muted={b.archived}
+            trailing={Chevron}
+            onClick={() => setEditing(b)}
+          />
         ))}
-      </Card>
+      </ListCard>
       <Sheet open={editing !== null} onClose={() => setEditing(null)} title={editing === "new" ? "New business" : "Edit business"}>
         {editing !== null && <NameEditor item={editing === "new" ? null : editing} endpoint="/businesses" noun="Business" onDone={() => setEditing(null)} />}
       </Sheet>
@@ -389,23 +363,21 @@ function Categories() {
           { value: "income", label: "Income" },
         ]}
       />
-      <Card flush className="divide-y divide-line overflow-hidden">
+      <ListCard>
         {categories
           .filter((c) => c.transaction_type === type)
-          .map((c) => {
-            const v = categoryVisual(c.name);
-            return (
-              <Row
-                key={c.id}
-                leading={<IconBubble Icon={v.Icon} color={v.color} size={36} />}
-                title={c.name}
-                subtitle={c.usage_count ? `${c.usage_count} in the last 90 days` : undefined}
-                archived={c.archived}
-                onClick={() => setEditing(c)}
-              />
-            );
-          })}
-      </Card>
+          .map((c) => (
+            <ListRow
+              key={c.id}
+              leading={<Glyph icon={categoryIcon(c.name)} />}
+              title={<ItemTitle archived={c.archived}>{c.name}</ItemTitle>}
+              meta={c.usage_count ? `${c.usage_count} in the last 90 days` : undefined}
+              muted={c.archived}
+              trailing={Chevron}
+              onClick={() => setEditing(c)}
+            />
+          ))}
+      </ListCard>
       <Sheet open={editing !== null} onClose={() => setEditing(null)} title={editing === "new" ? `New ${type} category` : "Edit category"}>
         {editing !== null && (
           <NameEditor item={editing === "new" ? null : editing} endpoint="/categories" extra={{ transaction_type: type }} noun="Category" onDone={() => setEditing(null)} />
@@ -427,10 +399,11 @@ function Preferences() {
   return (
     <section>
       <SectionTitle>App</SectionTitle>
-      <Card flush className="divide-y divide-line overflow-hidden">
+      <ListCard>
         <div className="px-4 py-3.5">
-          <div className="mb-2.5 text-[15px] font-medium">Appearance</div>
+          <div className="mb-2.5 text-[15px] font-semibold text-ink">Appearance</div>
           <Segmented
+            label="Appearance"
             value={theme}
             onChange={(v) => {
               setTheme(v);
@@ -444,17 +417,18 @@ function Preferences() {
           />
         </div>
         {!install.installed && (install.canPrompt || install.ios) && (
-          <Row
-            leading={<RowIcon Icon={Smartphone} />}
+          <ListRow
+            leading={<Glyph icon={Smartphone} />}
             title="Install on your phone"
-            subtitle={install.canPrompt ? "Opens like a normal app, straight to Quick Add" : "Tap Share, then “Add to Home Screen”"}
+            meta={install.canPrompt ? "Opens like a normal app, straight to Quick Add" : "Tap Share, then “Add to Home Screen”"}
             onClick={install.canPrompt ? install.prompt : undefined}
+            trailing={install.canPrompt ? Chevron : undefined}
           />
         )}
-        <Row
-          leading={<RowIcon Icon={Download} />}
+        <ListRow
+          leading={<Glyph icon={Download} />}
           title="Export all transactions"
-          subtitle="CSV file for Excel or Google Sheets"
+          meta="CSV file for Excel or Google Sheets"
           onClick={async () => {
             if (exporting) return;
             setExporting(true);
@@ -466,9 +440,9 @@ function Preferences() {
               setExporting(false);
             }
           }}
-          right={exporting ? <Spinner className="text-muted" /> : undefined}
+          trailing={exporting ? <Spinner className="text-muted" /> : Chevron}
         />
-      </Card>
+      </ListCard>
     </section>
   );
 }
@@ -486,11 +460,11 @@ function Security() {
   return (
     <section>
       <SectionTitle>Security</SectionTitle>
-      <Card flush className="divide-y divide-line overflow-hidden">
-        <Row leading={<RowIcon Icon={KeyRound} />} title="Change password" onClick={() => setChanging(true)} />
-        <Row leading={<RowIcon Icon={LogOut} tone="danger" />} title="Log out" danger onClick={logout} />
-      </Card>
-      <p className="mt-6 text-center text-xs text-subtle">Trackaa · all amounts in Ghana cedis (GH₵)</p>
+      <ListCard>
+        <ListRow leading={<Glyph icon={KeyRound} />} title="Change password" trailing={Chevron} onClick={() => setChanging(true)} />
+        <ListRow leading={<Glyph icon={LogOut} tone="expense" />} title={<span className="text-expense">Log out</span>} onClick={logout} />
+      </ListCard>
+      <p className="mt-8 text-center text-[12px] text-subtle">Trackaa · all amounts in Ghana cedis (GH₵)</p>
       <Sheet open={changing} onClose={() => setChanging(false)} title="Change password">
         {changing && <PasswordForm onDone={() => setChanging(false)} />}
       </Sheet>
@@ -509,15 +483,12 @@ function PasswordForm({ onDone }: { onDone: () => void }) {
         run(() => api("/me/password", { method: "PUT", body: { ...f, password_confirmation: f.password } }), "Password changed. Other devices were signed out.");
       }}
     >
-      <div>
-        <Label htmlFor="pw-cur">Current password</Label>
+      <Field label="Current password" htmlFor="pw-cur">
         <Input id="pw-cur" type="password" required autoComplete="current-password" value={f.current_password} onChange={(e) => setF({ ...f, current_password: e.target.value })} />
-      </div>
-      <div>
-        <Label htmlFor="pw-new">New password</Label>
+      </Field>
+      <Field label="New password" htmlFor="pw-new" hint="At least 8 characters.">
         <Input id="pw-new" type="password" required minLength={8} autoComplete="new-password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} />
-        <p className="mt-1.5 text-xs text-muted">At least 8 characters.</p>
-      </div>
+      </Field>
       <FormError>{error}</FormError>
       <Button type="submit" size="lg" className="w-full" disabled={busy}>
         {busy && <Spinner />} Update password

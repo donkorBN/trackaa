@@ -1,38 +1,42 @@
 "use client";
 
-import { AlertTriangle, ArrowRight, CheckCircle2, CircleAlert, FileSpreadsheet, Flag, Plus, Target, Trash2 } from "lucide-react";
-import Link from "next/link";
+import { CircleAlert, CircleCheck, FileSpreadsheet, Flag, Plus, Target, Trash2, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
-import { ChartCard, LineChart, Meter, meterTone, toneLabel, type MeterTone } from "@/components/charts";
+import { ChartCard, LineChart, Meter, meterTone, ToneTag } from "@/components/charts";
 import { MoneyField } from "@/components/MoneyField";
 import { useToast } from "@/components/toast";
 import {
   Button,
+  Callout,
   Card,
   Chip,
-  cx,
   EmptyState,
   ErrorBox,
   Eyebrow,
+  Field,
   FormError,
+  Glyph,
   Input,
-  Label,
+  LinkCard,
+  ListCard,
+  ListRow,
+  Num,
+  PageHeader,
+  ProgressBar,
   SectionTitle,
   Segmented,
   Sheet,
   Skeleton,
   Spinner,
+  Tag,
 } from "@/components/ui";
 import { api, ApiError, fetcher, withQuery } from "@/lib/api";
 import { deviceTimezone, shortDate, ymd } from "@/lib/dates";
 import { useBudgets, useCategories, useGoals, useRefreshAll } from "@/lib/hooks";
 import { formatGHS, parseAmount, toInputString } from "@/lib/money";
 import type { Budget, BudgetsResponse, Goal, GoalDetail } from "@/lib/types";
-import { categoryVisual, IconBubble } from "@/lib/visuals";
-
-// Goal identity colours in a fixed categorical order (validated reference palette).
-const GOAL_COLORS = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"];
+import { categoryIcon } from "@/lib/visuals";
 
 function errorText(err: unknown) {
   const e = err as ApiError;
@@ -46,46 +50,23 @@ export default function PlanPage() {
     : "";
   return (
     <div className="space-y-8">
-      <header className="pt-1">
-        <Eyebrow>{month}</Eyebrow>
-        <h1 className="mt-0.5 text-[28px] leading-tight font-bold tracking-tight">Plan</h1>
-      </header>
+      <PageHeader eyebrow={month || undefined} title="Plan" />
       <Budgets res={budgets.data} error={budgets.error} retry={() => budgets.mutate()} />
       <Goals />
-      <Link
-        href="/reconcile"
-        className="flex items-center gap-3 rounded-3xl border border-line bg-surface p-4 shadow-card hover:bg-surface-2"
-      >
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-transfer-soft text-transfer">
-          <FileSpreadsheet size={20} />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[15px] font-semibold">Reconcile statements</span>
-          <span className="block text-[13px] text-muted">Check your MoMo or bank statement against what you recorded</span>
-        </span>
-        <ArrowRight size={18} className="shrink-0 text-subtle" />
-      </Link>
+      <LinkCard href="/reconcile">
+        <div className="flex items-center gap-3">
+          <Glyph icon={FileSpreadsheet} />
+          <span className="min-w-0 flex-1">
+            <span className="block text-[15px] font-semibold text-ink">Reconcile statements</span>
+            <span className="mt-0.5 block text-[12.5px] text-muted">Check your MoMo or bank statement against what you recorded</span>
+          </span>
+        </div>
+      </LinkCard>
     </div>
   );
 }
 
 /* ================= Budgets ================= */
-
-function ToneBadge({ tone }: { tone: MeterTone }) {
-  const Icon = tone === "good" ? CheckCircle2 : tone === "warn" ? AlertTriangle : CircleAlert;
-  return (
-    <span
-      className={cx(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
-        tone === "good" && "bg-income-soft text-income",
-        tone === "warn" && "bg-[color-mix(in_oklab,#d97706_14%,transparent)] text-[#b45309] dark:text-[#fbbf24]",
-        tone === "over" && "bg-expense-soft text-expense",
-      )}
-    >
-      <Icon size={12} strokeWidth={2.5} /> {toneLabel(tone)}
-    </span>
-  );
-}
 
 function Budgets({ res, error, retry }: { res?: BudgetsResponse; error: unknown; retry: () => void }) {
   const [editing, setEditing] = useState<Budget | "new" | null>(null);
@@ -97,35 +78,37 @@ function Budgets({ res, error, retry }: { res?: BudgetsResponse; error: unknown;
   const others = res.data.filter((b) => !b.category && b !== overall);
 
   return (
-    <section className="space-y-4">
+    <section>
       <SectionTitle
         action={
-          <button type="button" onClick={() => setEditing("new")} className="text-[13px] font-semibold text-transfer">
+          <Button variant="secondary" size="sm" onClick={() => setEditing("new")}>
             + Add budget
-          </button>
+          </Button>
         }
       >
         Budget
       </SectionTitle>
 
-      {overall ? (
-        <OverallBudget b={overall} res={res} onEdit={() => setEditing(overall)} />
-      ) : (
-        <EmptyState
-          icon={<Target size={30} />}
-          title="Set a monthly budget"
-          body="We'll split it into a daily and weekly amount and show how much you can still spend."
-          action={<Button onClick={() => setEditing("new")}>Set budget</Button>}
-        />
-      )}
+      <div className="space-y-3">
+        {overall ? (
+          <OverallBudget b={overall} res={res} onEdit={() => setEditing(overall)} />
+        ) : (
+          <EmptyState
+            icon={<Target size={30} />}
+            title="Set a monthly budget"
+            body="We'll split it into a daily and weekly amount and show how much you can still spend."
+            action={<Button onClick={() => setEditing("new")}>Set budget</Button>}
+          />
+        )}
 
-      {[...others, ...byCategory].length > 0 && (
-        <Card flush className="divide-y divide-line overflow-hidden">
-          {[...others, ...byCategory].map((b) => (
-            <BudgetRow key={b.id} b={b} onClick={() => setEditing(b)} />
-          ))}
-        </Card>
-      )}
+        {[...others, ...byCategory].length > 0 && (
+          <ListCard>
+            {[...others, ...byCategory].map((b) => (
+              <BudgetRow key={b.id} b={b} onClick={() => setEditing(b)} />
+            ))}
+          </ListCard>
+        )}
+      </div>
 
       <Sheet open={editing !== null} onClose={() => setEditing(null)} title={editing === "new" ? "New budget" : "Edit budget"}>
         {editing !== null && <BudgetForm budget={editing === "new" ? null : editing} res={res} onDone={() => setEditing(null)} />}
@@ -142,20 +125,25 @@ function OverallBudget({ b, res, onEdit }: { b: Budget; res: BudgetsResponse; on
   const tone = meterTone(b.spent, b.amount, b.expected_by_now);
   const over = b.remaining < 0;
   return (
-    <button type="button" onClick={onEdit} className="block w-full rounded-[28px] border border-line bg-surface p-5 text-left shadow-card">
+    <button
+      type="button"
+      onClick={onEdit}
+      className="block w-full rounded-card border border-line bg-surface p-5 text-left transition-colors hover:border-ink/30"
+    >
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[13px] text-muted">Monthly budget{b.scope !== "all" ? ` · ${scopeName(b.scope)}` : ""}</span>
-        <ToneBadge tone={tone} />
+        <span className="text-[13px] font-semibold text-muted">Monthly budget{b.scope !== "all" ? ` · ${scopeName(b.scope)}` : ""}</span>
+        <ToneTag tone={tone} />
       </div>
-      <div className={cx("mt-2 text-[34px] leading-none font-bold tracking-tight", over && "text-expense")}>
+      <Num tone={over ? "expense" : "neutral"} className="mt-2 block text-[40px] leading-none font-extrabold">
         {formatGHS(Math.abs(b.remaining))}
+      </Num>
+      <div className="mt-2 text-[13px] text-muted">
+        {over ? "over budget" : "left"} · <span className="tabular">{formatGHS(b.spent)}</span> of{" "}
+        <span className="tabular">{formatGHS(b.amount)}</span> spent
       </div>
-      <div className="mt-1.5 text-sm text-muted">
-        {over ? "over budget" : "left"} · {formatGHS(b.spent)} of {formatGHS(b.amount)} spent
-      </div>
-      <div className="mt-4">
+      <div className="mt-5">
         <Meter value={b.spent} max={b.amount} tone={tone} pace={b.expected_by_now} height={12} />
-        <div className="mt-1.5 flex justify-between text-[11px] text-subtle">
+        <div className="mt-2 flex justify-between text-[11.5px] text-subtle">
           <span>
             Day {res.days_elapsed} of {res.days_in_month}
           </span>
@@ -163,16 +151,16 @@ function OverallBudget({ b, res, onEdit }: { b: Budget; res: BudgetsResponse; on
         </div>
       </div>
       {b.daily_allowance !== null && res.days_left > 0 && (
-        <p className="mt-4 rounded-2xl bg-surface-2 px-4 py-3 text-sm">
+        <Callout tone={over ? "bad" : "info"} className="mt-4">
           {over ? (
             <>You&apos;ve gone over this month&apos;s budget. Every cedi from here adds to the overspend.</>
           ) : (
             <>
-              You can spend <span className="font-semibold">{formatGHS(b.daily_allowance)} a day</span> for the next {res.days_left} day
+              You can spend <Num>{formatGHS(b.daily_allowance)} a day</Num> for the next {res.days_left} day
               {res.days_left === 1 ? "" : "s"}.
             </>
           )}
-        </p>
+        </Callout>
       )}
       <div className="mt-4 grid grid-cols-3 gap-2">
         <Period label="Today" spent={b.spent_today ?? 0} limit={b.daily} />
@@ -186,10 +174,10 @@ function OverallBudget({ b, res, onEdit }: { b: Budget; res: BudgetsResponse; on
 function Period({ label, spent, limit }: { label: string; spent: number; limit: number }) {
   const tone = meterTone(spent, limit);
   return (
-    <div className="rounded-2xl bg-surface-2 p-3">
-      <div className="text-[11px] text-muted">{label}</div>
-      <div className="mt-1 text-[13px] leading-tight font-semibold break-words">{formatGHS(spent, { compact: true })}</div>
-      <div className="mb-2 text-[11px] leading-tight text-muted break-words">of {formatGHS(limit, { compact: true })}</div>
+    <div className="rounded-tile bg-surface-2 p-3">
+      <Eyebrow className="truncate">{label}</Eyebrow>
+      <Num className="mt-1 block text-[15px] leading-tight break-words">{formatGHS(spent, { compact: true })}</Num>
+      <div className="tabular mb-2 text-[11.5px] leading-tight break-words text-muted">of {formatGHS(limit, { compact: true })}</div>
       <Meter value={spent} max={limit} tone={tone} height={6} />
     </div>
   );
@@ -197,32 +185,28 @@ function Period({ label, spent, limit }: { label: string; spent: number; limit: 
 
 function BudgetRow({ b, onClick }: { b: Budget; onClick: () => void }) {
   const tone = meterTone(b.spent, b.amount, b.expected_by_now);
-  const v = b.category ? categoryVisual(b.category.name) : null;
+  const over = b.remaining < 0;
   return (
-    <button type="button" onClick={onClick} className="block w-full px-4 py-3.5 text-left hover:bg-surface-2">
+    <button type="button" onClick={onClick} className="block w-full px-4 py-3.5 text-left transition-colors hover:bg-surface-2">
       <div className="flex items-center gap-3">
-        {v ? (
-          <IconBubble Icon={v.Icon} color={v.color} size={36} />
-        ) : (
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-surface-2">
-            <Target size={17} />
-          </span>
-        )}
+        <Glyph icon={b.category ? categoryIcon(b.category.name) : Target} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="truncate text-[15px] font-medium">{b.category?.name ?? `${scopeName(b.scope)} budget`}</span>
-            {tone !== "good" && <ToneBadge tone={tone} />}
+            <span className="truncate text-[15px] font-semibold text-ink">{b.category?.name ?? `${scopeName(b.scope)} budget`}</span>
+            {tone !== "good" && <ToneTag tone={tone} />}
           </div>
-          <div className="tabular text-xs text-muted">
+          <div className="tabular mt-0.5 text-[12.5px] text-muted">
             {formatGHS(b.spent)} of {formatGHS(b.amount)}
           </div>
         </div>
-        <div className={cx("tabular shrink-0 text-right text-[13px] font-semibold", b.remaining < 0 && "text-expense")}>
-          {formatGHS(Math.abs(b.remaining), { compact: true })}
-          <div className="text-[11px] font-normal text-muted">{b.remaining < 0 ? "over" : "left"}</div>
+        <div className="shrink-0 text-right">
+          <Num tone={over ? "expense" : "neutral"} className="block text-[15px]">
+            {formatGHS(Math.abs(b.remaining), { compact: true })}
+          </Num>
+          <div className="text-[11.5px] text-muted">{over ? "over" : "left"}</div>
         </div>
       </div>
-      <div className="mt-2.5 pl-12">
+      <div className="mt-2.5 pl-[52px]">
         <Meter value={b.spent} max={b.amount} tone={tone} pace={b.expected_by_now} height={6} />
       </div>
     </button>
@@ -286,6 +270,7 @@ function BudgetForm({ budget, res, onDone }: { budget: Budget | null; res: Budge
         <Segmented
           value={kind}
           onChange={setKind}
+          label="Budget type"
           options={[
             { value: "overall", label: "Whole month" },
             { value: "category", label: "One category" },
@@ -293,45 +278,49 @@ function BudgetForm({ budget, res, onDone }: { budget: Budget | null; res: Budge
         />
       )}
       {kind === "overall" && !budget && (
-        <div>
-          <Label>Counts spending from</Label>
-          <div className="flex gap-2">
+        <Field label="Counts spending from">
+          <div className="flex flex-wrap gap-2">
             {(["all", "personal", "business"] as const).map((s) => (
               <Chip key={s} active={scope === s} onClick={() => setScope(s)}>
                 {scopeName(s)}
               </Chip>
             ))}
           </div>
-        </div>
+        </Field>
       )}
       {kind === "category" && !budget && (
-        <div>
-          <Label>Category</Label>
+        <Field label="Category">
           <div className="flex flex-wrap gap-2">
             {categories
               .filter((c) => c.transaction_type === "expense")
-              .map((c) => {
-                const v = categoryVisual(c.name);
-                return (
-                  <Chip key={c.id} active={categoryId === c.id} onClick={() => setCategoryId(c.id)} icon={<v.Icon size={14} />}>
-                    {c.name}
-                  </Chip>
-                );
-              })}
+              .map((c) => (
+                <Chip key={c.id} active={categoryId === c.id} onClick={() => setCategoryId(c.id)} icon={<CategoryIcon name={c.name} />}>
+                  {c.name}
+                </Chip>
+              ))}
           </div>
+        </Field>
+      )}
+      {budget && (
+        <div className="flex items-center gap-3">
+          <Glyph icon={budget.category ? categoryIcon(budget.category.name) : Target} />
+          <span className="text-[15px] font-semibold text-ink">{budget.category?.name ?? `Monthly budget · ${scopeName(budget.scope)}`}</span>
         </div>
       )}
-      {budget && <div className="text-[15px] font-medium">{budget.category?.name ?? `Monthly budget · ${scopeName(budget.scope)}`}</div>}
-      <div>
-        <Label htmlFor="budget-amount">Monthly amount</Label>
+      <Field
+        label="Monthly amount"
+        htmlFor="budget-amount"
+        hint={
+          p ? (
+            <span className="tabular">
+              That&apos;s about <Num>{formatGHS(Math.floor(p / days))}</Num> a day or{" "}
+              <Num>{formatGHS(Math.floor((p * 7) / days))}</Num> a week this month.
+            </span>
+          ) : null
+        }
+      >
         <MoneyField id="budget-amount" value={amount} onChange={setAmount} autoFocus={!!budget} />
-        {p ? (
-          <p className="tabular mt-2 text-[13px] text-muted">
-            That&apos;s about <span className="font-semibold text-ink">{formatGHS(Math.floor(p / days))}</span> a day or{" "}
-            <span className="font-semibold text-ink">{formatGHS(Math.floor((p * 7) / days))}</span> a week this month.
-          </p>
-        ) : null}
-      </div>
+      </Field>
       <FormError>{error}</FormError>
       <div className="flex gap-2">
         {budget && (
@@ -347,6 +336,12 @@ function BudgetForm({ budget, res, onDone }: { budget: Budget | null; res: Budge
   );
 }
 
+/** Small category icon for chips (on-system: inherits the chip's ink/surface colour). */
+function CategoryIcon({ name }: { name: string }) {
+  const Icon = categoryIcon(name);
+  return <Icon size={14} />;
+}
+
 /* ================= Goals ================= */
 
 function Goals() {
@@ -356,52 +351,44 @@ function Goals() {
   const [adding, setAdding] = useState<Goal | null>(null);
 
   return (
-    <section className="space-y-4">
+    <section>
       <SectionTitle
         action={
-          <button type="button" onClick={() => setCreating(true)} className="text-[13px] font-semibold text-transfer">
+          <Button variant="secondary" size="sm" onClick={() => setCreating(true)}>
             + New goal
-          </button>
+          </Button>
         }
       >
         Goals
       </SectionTitle>
-      {error && <ErrorBox error={error} onRetry={() => mutate()} />}
-      {isLoading && <Skeleton className="h-36" />}
-      {!isLoading && goals.length === 0 && (
-        <EmptyState
-          icon={<Flag size={30} />}
-          title="Save towards something"
-          body="An emergency fund, rent, stock for the business, a new laptop. We'll show what to put aside each week."
-          action={<Button onClick={() => setCreating(true)}>Create a goal</Button>}
-        />
-      )}
-      <div className="grid gap-3 md:grid-cols-2">
-        {goals.map((g, i) => (
-          <GoalCard
-            key={g.id}
-            goal={g}
-            color={g.color ?? GOAL_COLORS[i % GOAL_COLORS.length]}
-            onOpen={() => setOpen(g)}
-            onAdd={() => setAdding(g)}
+      <div className="space-y-3">
+        {error && <ErrorBox error={error} onRetry={() => mutate()} />}
+        {isLoading && <Skeleton className="h-36" />}
+        {!isLoading && goals.length === 0 && (
+          <EmptyState
+            icon={<Flag size={30} />}
+            title="Save towards something"
+            body="An emergency fund, rent, stock for the business, a new laptop. We'll show what to put aside each week."
+            action={<Button onClick={() => setCreating(true)}>Create a goal</Button>}
           />
-        ))}
+        )}
+        {goals.length > 0 && (
+          <div className="grid gap-3 md:grid-cols-2">
+            {goals.map((g) => (
+              <GoalCard key={g.id} goal={g} onOpen={() => setOpen(g)} onAdd={() => setAdding(g)} />
+            ))}
+          </div>
+        )}
       </div>
 
       <Sheet open={creating} onClose={() => setCreating(false)} title="New goal">
-        {creating && <GoalForm onDone={() => setCreating(false)} nextColor={GOAL_COLORS[goals.length % GOAL_COLORS.length]} />}
+        {creating && <GoalForm onDone={() => setCreating(false)} />}
       </Sheet>
       <Sheet open={!!adding} onClose={() => setAdding(null)} title={adding ? `Add to ${adding.name}` : ""}>
         {adding && <ContributionForm goal={adding} onDone={() => setAdding(null)} />}
       </Sheet>
       <Sheet open={!!open} onClose={() => setOpen(null)} title={open?.name} wide>
-        {open && (
-          <GoalDetailView
-            goal={open}
-            color={open.color ?? GOAL_COLORS[goals.findIndex((g) => g.id === open.id) % GOAL_COLORS.length]}
-            onClose={() => setOpen(null)}
-          />
-        )}
+        {open && <GoalDetailView goal={open} onClose={() => setOpen(null)} />}
       </Sheet>
     </section>
   );
@@ -414,43 +401,46 @@ function goalPlanText(g: Goal) {
   return "Add your first contribution to start tracking progress.";
 }
 
-function GoalCard({ goal: g, color, onOpen, onAdd }: { goal: Goal; color: string; onOpen: () => void; onAdd: () => void }) {
+/** Goal pace as words + icon, never colour alone. */
+function GoalPaceTag({ g }: { g: Goal }) {
+  if (g.on_track === null) return null;
+  return g.on_track ? (
+    <Tag tone="good" icon={CircleCheck}>
+      On pace
+    </Tag>
+  ) : (
+    <Tag tone="warn" icon={TriangleAlert}>
+      {`Behind: at this pace, ${g.projected_date ? shortDate(g.projected_date) : "later"}`}
+    </Tag>
+  );
+}
+
+function GoalCard({ goal: g, onOpen, onAdd }: { goal: Goal; onOpen: () => void; onAdd: () => void }) {
+  const reached = g.remaining <= 0;
   return (
-    <div className="rounded-3xl border border-line bg-surface p-5 shadow-card">
+    <Card>
       <button type="button" onClick={onOpen} className="block w-full text-left">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: color }} />
-              <span className="truncate text-[15px] font-semibold">{g.name}</span>
-            </div>
-            <div className="mt-1 text-xs text-muted">{g.target_date ? `By ${shortDate(g.target_date)}` : "No deadline"}</div>
+        <div className="flex items-start gap-3">
+          <Glyph icon={Flag} active={reached} />
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[15px] font-semibold text-ink">{g.name}</div>
+            <div className="mt-0.5 text-[12.5px] text-muted">{g.target_date ? `By ${shortDate(g.target_date)}` : "No deadline"}</div>
           </div>
-          <div className="shrink-0 text-right">
-            <div className="text-[22px] leading-none font-bold tracking-tight">{g.percent}%</div>
-          </div>
+          <Num className="shrink-0 text-[24px] leading-none font-extrabold">{g.percent}%</Num>
         </div>
-        <div className="mt-4 h-2.5 w-full rounded-full" style={{ background: `color-mix(in oklab, ${color} 16%, transparent)` }}>
-          <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${g.percent}%`, background: color }} />
+        <div className="mt-4">
+          <ProgressBar value={g.saved} max={g.target_amount} tone="brand" label={`${g.name} progress`} />
         </div>
-        <div className="tabular mt-2 flex justify-between text-xs text-muted">
+        <div className="mt-2 flex justify-between gap-2 text-[12.5px] text-muted">
           <span>
-            <span className="font-semibold text-ink">{formatGHS(g.saved)}</span> saved
+            <Num className="text-[13px]">{formatGHS(g.saved)}</Num> saved
           </span>
-          <span>of {formatGHS(g.target_amount)}</span>
+          <span className="tabular">of {formatGHS(g.target_amount)}</span>
         </div>
-        <p className="mt-3 text-[13px]">{goalPlanText(g)}</p>
+        <p className="mt-3 text-[13px] text-ink">{goalPlanText(g)}</p>
         {g.on_track !== null && g.remaining > 0 && (
-          <div className="mt-2">
-            <span
-              className={cx(
-                "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                g.on_track ? "bg-income-soft text-income" : "bg-expense-soft text-expense",
-              )}
-            >
-              {g.on_track ? <CheckCircle2 size={12} /> : <AlertTriangle size={12} />}
-              {g.on_track ? "On pace" : `Behind: at this pace, ${g.projected_date ? shortDate(g.projected_date) : "later"}`}
-            </span>
+          <div className="mt-2.5">
+            <GoalPaceTag g={g} />
           </div>
         )}
       </button>
@@ -459,17 +449,16 @@ function GoalCard({ goal: g, color, onOpen, onAdd }: { goal: Goal; color: string
           <Plus size={15} /> Add money
         </Button>
       )}
-    </div>
+    </Card>
   );
 }
 
-function GoalForm({ goal, onDone, nextColor }: { goal?: Goal; onDone: () => void; nextColor?: string }) {
+function GoalForm({ goal, onDone }: { goal?: Goal; onDone: () => void }) {
   const toast = useToast();
   const refreshAll = useRefreshAll();
   const [name, setName] = useState(goal?.name ?? "");
   const [target, setTarget] = useState(goal ? toInputString(goal.target_amount) : "");
   const [date, setDate] = useState(goal?.target_date ?? "");
-  const [color, setColor] = useState(goal?.color ?? nextColor ?? GOAL_COLORS[0]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -480,7 +469,8 @@ function GoalForm({ goal, onDone, nextColor }: { goal?: Goal; onDone: () => void
     if (!p) return setError("Enter a target amount.");
     setBusy(true);
     try {
-      const body = { name: name.trim(), target_amount: p, target_date: date || null, color };
+      // Goals render on-system (no per-goal colour). Keep any stored value; new goals send null (allowed by the API).
+      const body = { name: name.trim(), target_amount: p, target_date: date || null, color: goal?.color ?? null };
       if (goal) await api(`/goals/${goal.id}`, { method: "PATCH", body });
       else await api("/goals", { method: "POST", body });
       refreshAll();
@@ -494,8 +484,7 @@ function GoalForm({ goal, onDone, nextColor }: { goal?: Goal; onDone: () => void
 
   return (
     <form onSubmit={save} className="space-y-4">
-      <div>
-        <Label htmlFor="goal-name">Name</Label>
+      <Field label="Name" htmlFor="goal-name">
         <Input
           id="goal-name"
           autoFocus={!goal}
@@ -504,31 +493,13 @@ function GoalForm({ goal, onDone, nextColor }: { goal?: Goal; onDone: () => void
           maxLength={80}
           placeholder="e.g. Emergency fund"
         />
-      </div>
-      <div>
-        <Label htmlFor="goal-target">Target</Label>
+      </Field>
+      <Field label="Target" htmlFor="goal-target">
         <MoneyField id="goal-target" value={target} onChange={setTarget} />
-      </div>
-      <div>
-        <Label htmlFor="goal-date">Target date (optional)</Label>
+      </Field>
+      <Field label="Target date (optional)" htmlFor="goal-date">
         <Input id="goal-date" type="date" min={ymd(new Date())} value={date} onChange={(e) => setDate(e.target.value)} />
-      </div>
-      <div>
-        <Label>Colour</Label>
-        <div className="flex flex-wrap gap-2">
-          {GOAL_COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              aria-label={`Colour ${c}`}
-              aria-pressed={color === c}
-              onClick={() => setColor(c)}
-              className={cx("h-8 w-8 rounded-full ring-offset-2 ring-offset-surface transition", color === c && "ring-2 ring-ink")}
-              style={{ background: c }}
-            />
-          ))}
-        </div>
-      </div>
+      </Field>
       <FormError>{error}</FormError>
       <Button type="submit" size="lg" className="w-full" disabled={busy}>
         {busy && <Spinner />} {goal ? "Save goal" : "Create goal"}
@@ -573,31 +544,34 @@ function ContributionForm({ goal, onDone }: { goal: Goal; onDone: () => void }) 
       <Segmented
         value={withdraw ? "out" : "in"}
         onChange={(v) => setWithdraw(v === "out")}
+        label="Add or take out"
         options={[
           { value: "in", label: "Add money" },
           { value: "out", label: "Take out" },
         ]}
       />
-      <div>
-        <Label htmlFor="contrib-amount">Amount</Label>
+      <Field
+        label="Amount"
+        htmlFor="contrib-amount"
+        hint={
+          goal.weekly_needed && !withdraw ? (
+            <>
+              Suggested: <Num>{formatGHS(goal.weekly_needed)}</Num> a week
+            </>
+          ) : null
+        }
+      >
         <MoneyField id="contrib-amount" value={amount} onChange={setAmount} autoFocus />
-        {goal.weekly_needed && !withdraw ? (
-          <p className="mt-1.5 text-xs text-muted">Suggested: {formatGHS(goal.weekly_needed)} a week</p>
-        ) : null}
-      </div>
+      </Field>
       <div className="grid grid-cols-2 gap-2">
-        <div>
-          <Label htmlFor="contrib-date">Date</Label>
+        <Field label="Date" htmlFor="contrib-date">
           <Input id="contrib-date" type="date" max={ymd(new Date())} value={date} onChange={(e) => setDate(e.target.value)} />
-        </div>
-        <div>
-          <Label htmlFor="contrib-note">Note</Label>
+        </Field>
+        <Field label="Note" htmlFor="contrib-note">
           <Input id="contrib-note" value={note} onChange={(e) => setNote(e.target.value)} maxLength={255} placeholder="Optional" />
-        </div>
+        </Field>
       </div>
-      <p className="text-xs text-muted">
-        This tracks progress towards the goal. To record the money actually moving, add a transfer to your savings account too.
-      </p>
+      <Callout>This tracks progress towards the goal. To record the money actually moving, add a transfer to your savings account too.</Callout>
       <FormError>{error}</FormError>
       <Button type="submit" size="lg" className="w-full" disabled={busy}>
         {busy && <Spinner />} Save
@@ -606,7 +580,7 @@ function ContributionForm({ goal, onDone }: { goal: Goal; onDone: () => void }) 
   );
 }
 
-function GoalDetailView({ goal, color, onClose }: { goal: Goal; color: string; onClose: () => void }) {
+function GoalDetailView({ goal, onClose }: { goal: Goal; onClose: () => void }) {
   const toast = useToast();
   const refreshAll = useRefreshAll();
   const { data, mutate } = useSWR<GoalDetail>(withQuery(`/goals/${goal.id}`, { tz: deviceTimezone() }), fetcher);
@@ -633,12 +607,26 @@ function GoalDetailView({ goal, color, onClose }: { goal: Goal; color: string; o
   return (
     <div className="space-y-5">
       <div>
-        <div className="text-[34px] leading-none font-bold tracking-tight">{formatGHS(g.saved)}</div>
-        <div className="mt-1.5 text-sm text-muted">
-          saved of {formatGHS(g.target_amount)} · {g.percent}%{g.target_date ? ` · by ${shortDate(g.target_date)}` : ""}
+        <Eyebrow>Saved</Eyebrow>
+        <Num className="mt-1 block text-[40px] leading-none font-extrabold">{formatGHS(g.saved)}</Num>
+        <div className="mt-2 text-[13px] text-muted">
+          saved of <span className="tabular">{formatGHS(g.target_amount)}</span> · {g.percent}%
+          {g.target_date ? ` · by ${shortDate(g.target_date)}` : ""}
         </div>
-        <p className="mt-3 text-sm">{goalPlanText(g)}</p>
-        {g.monthly_needed ? <p className="mt-1 text-[13px] text-muted">That&apos;s about {formatGHS(g.monthly_needed)} a month.</p> : null}
+        <div className="mt-4">
+          <ProgressBar value={g.saved} max={g.target_amount} tone="brand" size="lg" label={`${g.name} progress`} />
+        </div>
+        <p className="mt-4 text-sm text-ink">{goalPlanText(g)}</p>
+        {g.monthly_needed ? (
+          <p className="mt-1 text-[13px] text-muted">
+            That&apos;s about <Num>{formatGHS(g.monthly_needed)}</Num> a month.
+          </p>
+        ) : null}
+        {g.on_track !== null && g.remaining > 0 && (
+          <div className="mt-3">
+            <GoalPaceTag g={g} />
+          </div>
+        )}
       </div>
 
       {history.length > 0 && (
@@ -656,7 +644,7 @@ function GoalDetailView({ goal, color, onClose }: { goal: Goal; color: string; o
               ...history.map((c) => ({ key: String(c.id), label: shortDate(c.occurred_on), value: c.running_total })),
             ]}
             target={g.target_amount}
-            color={color}
+            color="var(--text)"
             startLabel={shortDate(history[0].occurred_on)}
             endLabel={shortDate(history[history.length - 1].occurred_on)}
           />
@@ -676,35 +664,35 @@ function GoalDetailView({ goal, color, onClose }: { goal: Goal; color: string; o
 
       {data && data.contributions.length > 0 && (
         <div>
-          <div className="mb-2 text-[13px] font-medium text-muted">History</div>
-          <Card flush className="divide-y divide-line overflow-hidden">
+          <Eyebrow className="mb-2 px-0.5">History</Eyebrow>
+          <ListCard>
             {data.contributions.map((c) => (
-              <div key={c.id} className="flex items-center gap-3 px-4 py-3">
-                <div className="min-w-0 flex-1">
-                  <div className={cx("tabular text-[15px] font-semibold", c.amount < 0 && "text-expense")}>
+              <ListRow
+                key={c.id}
+                title={
+                  <Num tone={c.amount < 0 ? "expense" : "neutral"} className="text-[15px]">
                     {formatGHS(c.amount, { sign: true })}
-                  </div>
-                  <div className="truncate text-xs text-muted">
-                    {shortDate(c.occurred_on)}
-                    {c.note ? ` · ${c.note}` : ""}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => removeContribution(c.id)}
-                  aria-label="Remove contribution"
-                  className="rounded-lg p-2 text-subtle hover:bg-surface-2 hover:text-expense"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
+                  </Num>
+                }
+                meta={`${shortDate(c.occurred_on)}${c.note ? ` · ${c.note}` : ""}`}
+                trailing={
+                  <button
+                    type="button"
+                    onClick={() => removeContribution(c.id)}
+                    aria-label="Remove contribution"
+                    className="flex h-9 w-9 items-center justify-center rounded-control text-subtle transition-colors hover:bg-expense-soft hover:text-expense"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                }
+              />
             ))}
-          </Card>
+          </ListCard>
         </div>
       )}
 
       <Button variant="danger" className="w-full" onClick={del}>
-        <Trash2 size={16} /> {confirm ? "Tap again to delete this goal" : "Delete goal"}
+        {confirm ? <CircleAlert size={16} /> : <Trash2 size={16} />} {confirm ? "Tap again to delete this goal" : "Delete goal"}
       </Button>
     </div>
   );

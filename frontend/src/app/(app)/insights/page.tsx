@@ -4,12 +4,12 @@ import { ArrowDownRight, ArrowUpRight, Lightbulb, Minus } from "lucide-react";
 import { useState } from "react";
 import { ChartCard, ColumnChart, FlowChart, LegendKey } from "@/components/charts";
 import { ScopePicker, scopeQuery, type ScopeValue } from "@/components/ScopePicker";
-import { Card, cx, ErrorBox, Eyebrow, SectionTitle, Segmented, Skeleton } from "@/components/ui";
+import { Card, cx, ErrorBox, Eyebrow, Glyph, ListCard, ListRow, Num, PageHeader, SectionTitle, Segmented, Skeleton } from "@/components/ui";
 import { shortDate } from "@/lib/dates";
 import { useBudgets, useInsights } from "@/lib/hooks";
 import { formatGHS } from "@/lib/money";
 import type { Insights } from "@/lib/types";
-import { categoryVisual, IconBubble } from "@/lib/visuals";
+import { categoryIcon } from "@/lib/visuals";
 
 const monthLabel = (ym: string, opts: Intl.DateTimeFormatOptions = { month: "short" }) =>
   new Date(`${ym}-01T00:00:00`).toLocaleDateString("en-GB", opts);
@@ -32,16 +32,14 @@ export default function InsightsPage() {
 
   return (
     <div className="space-y-6">
-      <header className="pt-1">
-        <Eyebrow>Trends and patterns</Eyebrow>
-        <h1 className="mt-0.5 text-[28px] leading-tight font-bold tracking-tight">Insights</h1>
-      </header>
+      <PageHeader eyebrow="Trends and patterns" title="Insights" />
 
       {/* One filter row scopes everything below */}
       <div className="space-y-2.5">
         <ScopePicker value={scope} onChange={setScope} />
         <Segmented
           size="sm"
+          label="Period"
           value={months}
           onChange={setMonths}
           options={[
@@ -148,11 +146,11 @@ function Stats({ data }: { data: Insights }) {
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
       {tiles.map((t) => (
-        <div key={t.label} className="rounded-3xl border border-line bg-surface p-4 shadow-card">
-          <div className="text-xs text-muted">{t.label}</div>
-          <div className="mt-1.5 text-[17px] leading-tight font-bold tracking-tight break-words">{t.value}</div>
-          <div className="mt-1 text-[11px] text-subtle">{t.note}</div>
-        </div>
+        <Card key={t.label} className="p-4">
+          <Eyebrow>{t.label}</Eyebrow>
+          <Num className="mt-1.5 block text-[19px] leading-tight break-words">{t.value}</Num>
+          <div className="mt-1 text-[12px] text-muted">{t.note}</div>
+        </Card>
       ))}
     </div>
   );
@@ -183,13 +181,14 @@ function Highlights({ data, dailyBudget }: { data: Insights; dailyBudget?: numbe
   if (!notes.length) return null;
   return (
     <Card>
-      <div className="flex items-center gap-2 text-[15px] font-semibold">
-        <Lightbulb size={17} className="text-[#d97706]" /> What stands out
+      <div className="flex items-center gap-3">
+        <Glyph icon={Lightbulb} active size={36} />
+        <h2 className="text-[19px] leading-tight font-bold text-ink">What stands out</h2>
       </div>
-      <ul className="mt-3 space-y-2 text-sm">
+      <ul className="mt-4 space-y-2.5 text-[14px] leading-snug text-ink">
         {notes.slice(0, 4).map((n) => (
-          <li key={n} className="flex gap-2">
-            <span className="mt-2 h-1 w-1 shrink-0 rounded-full bg-muted" />
+          <li key={n} className="flex gap-2.5">
+            <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-ink" aria-hidden />
             {n}
           </li>
         ))}
@@ -212,7 +211,7 @@ function WeekdayChart({ data }: { data: Insights }) {
       <ColumnChart
         data={data.weekdays.map((w) => ({ key: w.label, label: w.label, title: `Average ${w.label}`, value: w.average }))}
         emphasis={top ? [top.label] : undefined}
-        color="var(--transfer)"
+        color="var(--expense)"
         valueLabel="on average"
         height={160}
       />
@@ -224,36 +223,35 @@ function CategoryChanges({ data }: { data: Insights }) {
   if (!data.categories.length) return null;
   return (
     <section>
-      <SectionTitle>Compared with last month</SectionTitle>
-      <p className="-mt-2 mb-3 px-1 text-xs text-muted">This month so far vs the same number of days last month.</p>
-      <Card flush className="divide-y divide-line overflow-hidden">
+      <SectionTitle hint="This month so far vs the same number of days last month.">Compared with last month</SectionTitle>
+      <ListCard>
         {data.categories.slice(0, 8).map((c) => {
-          const v = categoryVisual(c.name);
           const pct = c.last_month_to_date > 0 ? Math.round((c.change / c.last_month_to_date) * 100) : null;
           const Icon = c.change > 0 ? ArrowUpRight : c.change < 0 ? ArrowDownRight : Minus;
           return (
-            <div key={c.id} className="flex items-center gap-3 px-4 py-3">
-              <IconBubble Icon={v.Icon} color={v.color} size={36} />
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-[15px] font-medium">{c.name}</div>
-                <div className="tabular text-xs text-muted">Last month at this point: {formatGHS(c.last_month_to_date)}</div>
-              </div>
-              <div className="shrink-0 text-right">
-                <div className="tabular text-[15px] font-semibold">{formatGHS(c.this_month)}</div>
-                <div
-                  className={cx(
-                    "tabular inline-flex items-center gap-0.5 text-xs font-medium",
-                    c.change > 0 ? "text-expense" : c.change < 0 ? "text-income" : "text-muted",
-                  )}
-                >
-                  <Icon size={13} />
-                  {pct === null ? (c.this_month > 0 ? "new" : "—") : `${Math.abs(pct)}% ${c.change >= 0 ? "more" : "less"}`}
-                </div>
-              </div>
-            </div>
+            <ListRow
+              key={c.id}
+              leading={<Glyph icon={categoryIcon(c.name)} />}
+              title={c.name}
+              meta={<span className="tabular">Last month at this point: {formatGHS(c.last_month_to_date)}</span>}
+              trailing={
+                <>
+                  <Num className="block text-[15px]">{formatGHS(c.this_month)}</Num>
+                  <span
+                    className={cx(
+                      "tabular mt-0.5 inline-flex items-center gap-0.5 text-[12px] font-semibold",
+                      c.change > 0 ? "text-expense" : c.change < 0 ? "text-income" : "text-muted",
+                    )}
+                  >
+                    <Icon size={13} strokeWidth={2.5} />
+                    {pct === null ? (c.this_month > 0 ? "new" : "—") : `${Math.abs(pct)}% ${c.change >= 0 ? "more" : "less"}`}
+                  </span>
+                </>
+              }
+            />
           );
         })}
-      </Card>
+      </ListCard>
     </section>
   );
 }
@@ -263,24 +261,17 @@ function TopExpenses({ data }: { data: Insights }) {
   return (
     <section>
       <SectionTitle>Biggest expenses this month</SectionTitle>
-      <Card flush className="divide-y divide-line overflow-hidden">
-        {data.top_expenses.map((t) => {
-          const v = categoryVisual(t.category);
-          return (
-            <div key={t.id} className="flex items-center gap-3 px-4 py-3">
-              <IconBubble Icon={v.Icon} color={v.color} size={36} />
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-[15px] font-medium">{t.description || t.category}</div>
-                <div className="text-xs text-muted">
-                  {t.description ? `${t.category} · ` : ""}
-                  {new Date(t.occurred_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                </div>
-              </div>
-              <div className="tabular shrink-0 text-[15px] font-semibold">−{formatGHS(t.amount)}</div>
-            </div>
-          );
-        })}
-      </Card>
+      <ListCard>
+        {data.top_expenses.map((t) => (
+          <ListRow
+            key={t.id}
+            leading={<Glyph icon={categoryIcon(t.category)} />}
+            title={t.description || t.category}
+            meta={`${t.description ? `${t.category} · ` : ""}${new Date(t.occurred_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`}
+            trailing={<Num className="text-[15px]">−{formatGHS(t.amount)}</Num>}
+          />
+        ))}
+      </ListCard>
     </section>
   );
 }

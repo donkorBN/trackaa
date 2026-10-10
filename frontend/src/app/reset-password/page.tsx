@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AuthLayout, firstError, PasswordInput } from "@/components/AuthForm";
-import { Button, FormError, Label, Spinner } from "@/components/ui";
+import { authLinkClass, AuthLayout, firstError, PasswordInput } from "@/components/AuthForm";
+import { buttonClass, Callout, Field, FormError, Button, Spinner } from "@/components/ui";
 import { api, setToken } from "@/lib/api";
 
 export default function ResetPasswordPage() {
@@ -42,20 +42,20 @@ export default function ResetPasswordPage() {
     <AuthLayout
       title="Choose a new password"
       subtitle={params?.email || undefined}
-      footer={<Link href="/login" className="font-semibold text-ink">Back to log in</Link>}
+      footer={<Link href="/login" className={authLinkClass}>Back to log in</Link>}
     >
       {invalid ? (
-        <div className="space-y-4 text-center text-sm text-muted">
-          <p>This reset link is incomplete. Request a new one.</p>
-          <Link href="/forgot-password" className="font-semibold text-ink">Send a new link</Link>
+        <div className="space-y-4">
+          <Callout tone="warn">This reset link is incomplete. Request a new one.</Callout>
+          <Link href="/forgot-password" className={buttonClass("primary", "lg") + " w-full"}>
+            Send a new link
+          </Link>
         </div>
       ) : (
         <form onSubmit={submit} className="space-y-4">
-          <div>
-            <Label htmlFor="password">New password</Label>
+          <Field label="New password" htmlFor="password" hint={<>At least 8 characters. You&apos;ll be signed out everywhere else.</>}>
             <PasswordInput id="password" required minLength={8} autoFocus autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
-            <p className="mt-1.5 text-xs text-muted">At least 8 characters. You&apos;ll be signed out everywhere else.</p>
-          </div>
+          </Field>
           <FormError>{error}</FormError>
           <Button type="submit" size="lg" className="w-full" disabled={busy || !params}>
             {busy && <Spinner />} Save and log in

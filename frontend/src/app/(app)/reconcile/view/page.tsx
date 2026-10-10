@@ -1,20 +1,21 @@
 "use client";
 
-import { ArrowLeft, CheckCircle2, EyeOff, Link2, Link2Off, Plus, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
-import Link from "next/link";
+import { CheckCircle2, CircleDashed, EyeOff, Link2, Link2Off, Plus, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import useSWR from "swr";
-import { Meter } from "@/components/charts";
 import { useToast } from "@/components/toast";
 import { TxRow } from "@/components/TxRow";
-import { Button, Card, Chip, cx, ErrorBox, FormError, Input, Label, Segmented, Sheet, Skeleton, Spinner } from "@/components/ui";
+import {
+  Button, Callout, Card, Chip, cx, ErrorBox, Field, FormError, Glyph, Input, Label, ListCard, ListRow, Num, PageHeader, ProgressBar, Segmented, Sheet,
+  Skeleton, Spinner, Tag,
+} from "@/components/ui";
 import { api, ApiError, fetcher, withQuery } from "@/lib/api";
 import { deviceTimezone, monthName, timeLabel } from "@/lib/dates";
 import { useBusinesses, useCategories, useRefreshAll } from "@/lib/hooks";
 import { formatGHS } from "@/lib/money";
 import type { StatementDetail, StatementLineT, Transaction } from "@/lib/types";
-import { categoryVisual } from "@/lib/visuals";
+import { categoryIcon, TransferIcon } from "@/lib/visuals";
 
 type Tab = "missing" | "app" | "matched" | "ignored";
 
@@ -58,71 +59,101 @@ export default function StatementPage() {
 
   return (
     <div className="space-y-6">
-      <header className="pt-1">
-        <Link href="/reconcile" className="inline-flex items-center gap-1 text-[13px] font-medium text-muted hover:text-ink">
-          <ArrowLeft size={15} /> Reconcile
-        </Link>
-        <h1 className="mt-1 text-[28px] leading-tight font-bold tracking-tight">{data.account.name}</h1>
-        <p className="text-sm text-muted">
-          {monthName(data.period)}
-          {data.source_name ? ` · ${data.source_name}` : ""}
-        </p>
-      </header>
+      <PageHeader
+        back={{ href: "/reconcile", label: "Reconcile" }}
+        eyebrow={
+          <>
+            {monthName(data.period)}
+            {data.source_name ? ` · ${data.source_name}` : ""}
+          </>
+        }
+        title={data.account.name}
+      />
 
       <Card className="space-y-4">
         <div>
-          <div className="flex items-baseline justify-between">
-            <span className="text-[15px] font-semibold">
-              {s.counts.matched} of {s.counts.total - s.counts.ignored} lines matched
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[15px] font-semibold text-ink">
+              <Num>{s.counts.matched}</Num> of <Num>{s.counts.total - s.counts.ignored}</Num> lines matched
             </span>
-            {done && (
-              <span className="inline-flex items-center gap-1 text-[13px] font-semibold text-income">
-                <CheckCircle2 size={15} /> Reconciled
-              </span>
+            {done ? (
+              <Tag tone="good" icon={CheckCircle2}>
+                Reconciled
+              </Tag>
+            ) : (
+              <Tag tone="warn" icon={CircleDashed}>
+                To review
+              </Tag>
             )}
           </div>
-          <div className="mt-2">
-            <Meter value={s.counts.matched} max={Math.max(s.counts.total - s.counts.ignored, 1)} tone={done ? "good" : "warn"} height={8} />
+          <div className="mt-3">
+            <ProgressBar
+              value={s.counts.matched}
+              max={Math.max(s.counts.total - s.counts.ignored, 1)}
+              tone={done ? "brand" : "warn"}
+              label="Lines matched"
+            />
           </div>
         </div>
-        <table className="tabular w-full text-sm">
-          <thead className="text-xs text-muted">
+        <table className="tabular w-full text-[14px]">
+          <thead className="eyebrow">
             <tr>
-              <th className="pb-2 text-left font-medium" />
-              <th className="pb-2 text-right font-medium">Statement</th>
-              <th className="pb-2 text-right font-medium">Trackaa</th>
+              <th className="pb-2 text-left font-[650]" />
+              <th className="pb-2 text-right font-[650]">Statement</th>
+              <th className="pb-2 text-right font-[650]">Trackaa</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-line">
+          <tbody className="divide-y divide-line border-t border-line">
             <tr>
-              <td className="py-2 text-muted">Money in</td>
-              <td className="py-2 text-right">{formatGHS(s.statement_in)}</td>
-              <td className={cx("py-2 text-right", s.statement_in !== s.app_in && "font-semibold")}>{formatGHS(s.app_in)}</td>
+              <td className="py-2.5 text-muted">Money in</td>
+              <td className="py-2.5 text-right">
+                <Num>{formatGHS(s.statement_in)}</Num>
+              </td>
+              <td className="py-2.5 text-right">
+                <Num tone={s.statement_in !== s.app_in ? "neutral" : "muted"} className={cx(s.statement_in !== s.app_in && "underline decoration-warn decoration-2 underline-offset-4")}>
+                  {formatGHS(s.app_in)}
+                </Num>
+              </td>
             </tr>
             <tr>
-              <td className="py-2 text-muted">Money out</td>
-              <td className="py-2 text-right">{formatGHS(s.statement_out)}</td>
-              <td className={cx("py-2 text-right", s.statement_out !== s.app_out && "font-semibold")}>{formatGHS(s.app_out)}</td>
+              <td className="py-2.5 text-muted">Money out</td>
+              <td className="py-2.5 text-right">
+                <Num>{formatGHS(s.statement_out)}</Num>
+              </td>
+              <td className="py-2.5 text-right">
+                <Num tone={s.statement_out !== s.app_out ? "neutral" : "muted"} className={cx(s.statement_out !== s.app_out && "underline decoration-warn decoration-2 underline-offset-4")}>
+                  {formatGHS(s.app_out)}
+                </Num>
+              </td>
             </tr>
             <tr>
-              <td className="py-2 text-muted">Closing balance</td>
-              <td className="py-2 text-right">{s.statement_closing === null ? "—" : formatGHS(s.statement_closing)}</td>
-              <td className="py-2 text-right">{formatGHS(s.recorded_closing)}</td>
+              <td className="py-2.5 text-muted">Closing balance</td>
+              <td className="py-2.5 text-right">
+                <Num>{s.statement_closing === null ? "—" : formatGHS(s.statement_closing)}</Num>
+              </td>
+              <td className="py-2.5 text-right">
+                <Num>{formatGHS(s.recorded_closing)}</Num>
+              </td>
             </tr>
           </tbody>
         </table>
         {s.difference !== null && s.difference !== 0 && (
-          <p className="rounded-2xl bg-surface-2 px-4 py-3 text-[13px]">
-            Your recorded balance is <span className="font-semibold">{formatGHS(Math.abs(s.difference))}</span>{" "}
+          <Callout tone="warn">
+            Your recorded balance is <span className="font-bold">{formatGHS(Math.abs(s.difference))}</span>{" "}
             {s.difference > 0 ? "lower" : "higher"} than the statement. Add the missing lines below, or adjust this account&apos;s opening
             balance in Settings if you started tracking mid-way.
-          </p>
+          </Callout>
         )}
-        {s.difference === 0 && <p className="text-[13px] text-income">Closing balances agree.</p>}
+        {s.difference === 0 && (
+          <Tag tone="good" icon={CheckCircle2}>
+            Closing balances agree.
+          </Tag>
+        )}
       </Card>
 
       <Segmented
         size="sm"
+        label="Statement lines"
         value={tab}
         onChange={setTab}
         options={[
@@ -140,7 +171,7 @@ export default function StatementPage() {
         >
           {missing.map((l) => (
             <LineRow key={l.id} line={l}>
-              <Button size="sm" onClick={() => setRecording(l)} disabled={busy}>
+              <Button size="sm" variant="ink" onClick={() => setRecording(l)} disabled={busy}>
                 <Plus size={14} /> Add
               </Button>
               <Button size="sm" variant="secondary" onClick={() => setMatching(l)} disabled={busy}>
@@ -169,7 +200,7 @@ export default function StatementPage() {
         <Section empty="Nothing matched yet.">
           {matched.map((l) => (
             <LineRow key={l.id} line={l} matchedTo={l.transaction}>
-              <Button size="sm" variant="ghost" onClick={() => lineAction(l, "unmatch")} disabled={busy}>
+              <Button size="sm" variant="secondary" onClick={() => lineAction(l, "unmatch")} disabled={busy}>
                 <Link2Off size={14} /> Unlink
               </Button>
             </LineRow>
@@ -181,7 +212,7 @@ export default function StatementPage() {
         <Section empty="No ignored lines.">
           {ignored.map((l) => (
             <LineRow key={l.id} line={l}>
-              <Button size="sm" variant="ghost" onClick={() => lineAction(l, "unignore")} disabled={busy}>
+              <Button size="sm" variant="secondary" onClick={() => lineAction(l, "unignore")} disabled={busy}>
                 <RotateCcw size={14} /> Restore
               </Button>
             </LineRow>
@@ -205,7 +236,7 @@ export default function StatementPage() {
           <Trash2 size={15} /> {confirmDelete ? "Tap again to delete" : "Delete statement"}
         </Button>
       </div>
-      <p className="text-center text-xs text-subtle">Deleting a statement never deletes your transactions.</p>
+      <p className="text-center text-[12.5px] text-subtle">Deleting a statement never deletes your transactions.</p>
 
       <Sheet open={!!recording} onClose={() => setRecording(null)} title="Add to Trackaa">
         {recording && (
@@ -240,15 +271,13 @@ export default function StatementPage() {
 function Section({ children, empty, hint }: { children: React.ReactNode[]; empty: string; hint?: string }) {
   return (
     <section className="space-y-3">
-      {hint && children.length > 0 && <p className="px-1 text-xs text-muted">{hint}</p>}
+      {hint && children.length > 0 && <p className="px-0.5 text-[13px] text-muted">{hint}</p>}
       {children.length === 0 ? (
-        <Card className="flex items-center gap-2 text-sm text-muted">
-          <CheckCircle2 size={16} className="text-income" /> {empty}
+        <Card className="flex items-center gap-3 text-[14px] text-muted">
+          <Glyph icon={CheckCircle2} size={36} tone="income" /> {empty}
         </Card>
       ) : (
-        <Card flush className="divide-y divide-line overflow-hidden">
-          {children}
-        </Card>
+        <ListCard>{children}</ListCard>
       )}
     </section>
   );
@@ -260,21 +289,23 @@ function LineRow({ line, children, matchedTo }: { line: StatementLineT; children
     <div className="px-4 py-3.5">
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
-          <div className="truncate text-[15px] font-medium">{line.description || (line.amount > 0 ? "Money in" : "Money out")}</div>
-          <div className="text-xs text-muted">
+          <div className="truncate text-[15px] font-semibold text-ink">{line.description || (line.amount > 0 ? "Money in" : "Money out")}</div>
+          <div className="mt-0.5 truncate text-[12.5px] text-muted">
             {d.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}, {timeLabel(line.occurred_at)}
             {line.reference ? ` · Ref ${line.reference}` : ""}
           </div>
           {matchedTo && (
-            <div className="mt-1 inline-flex items-center gap-1 text-xs text-income">
-              <Link2 size={12} /> {matchedTo.description || matchedTo.category?.name || "Transfer"} ·{" "}
-              {new Date(matchedTo.occurred_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-            </div>
+            <Tag tone="good" icon={Link2} className="mt-1.5 max-w-full">
+              <span className="truncate">
+                {matchedTo.description || matchedTo.category?.name || "Transfer"} ·{" "}
+                {new Date(matchedTo.occurred_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+              </span>
+            </Tag>
           )}
         </div>
-        <div className={cx("tabular shrink-0 text-[15px] font-semibold", line.amount > 0 && "text-income")}>
+        <Num tone={line.amount > 0 ? "income" : "neutral"} className="shrink-0 text-[15.5px]">
           {formatGHS(line.amount, { sign: true })}
-        </div>
+        </Num>
       </div>
       <div className="mt-2.5 flex flex-wrap gap-2">{children}</div>
     </div>
@@ -313,22 +344,22 @@ function RecordForm({ line, statementId, onSaved }: { line: StatementLineT; stat
 
   return (
     <form onSubmit={save} className="space-y-4">
-      <div className="rounded-2xl bg-surface-2 px-4 py-3">
-        <div className={cx("tabular text-[22px] font-bold", type === "income" ? "text-income" : "text-expense")}>
+      <Card tone="sunken" flush className="px-4 py-3">
+        <Num tone={type} className="block text-[26px] leading-tight font-extrabold">
           {formatGHS(line.amount, { sign: true })}
-        </div>
-        <div className="text-xs text-muted">
+        </Num>
+        <div className="mt-0.5 text-[12.5px] text-muted">
           {type === "income" ? "Income" : "Expense"} ·{" "}
           {new Date(line.occurred_at).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
         </div>
-      </div>
+      </Card>
       <div>
         <Label>Category</Label>
         <div className="flex flex-wrap gap-1.5">
           {options.map((c) => {
-            const v = categoryVisual(c.name);
+            const Icon = categoryIcon(c.name);
             return (
-              <Chip key={c.id} active={categoryId === c.id} onClick={() => setCategoryId(c.id)} icon={<v.Icon size={14} />} tone={type}>
+              <Chip key={c.id} active={categoryId === c.id} onClick={() => setCategoryId(c.id)} icon={<Icon size={14} />} tone={type}>
                 {c.name}
               </Chip>
             );
@@ -337,6 +368,7 @@ function RecordForm({ line, statementId, onSaved }: { line: StatementLineT; stat
       </div>
       <Segmented
         size="sm"
+        label="Scope"
         value={scope}
         onChange={setScope}
         options={[
@@ -353,10 +385,9 @@ function RecordForm({ line, statementId, onSaved }: { line: StatementLineT; stat
           ))}
         </div>
       )}
-      <div>
-        <Label htmlFor="rec-note">Note</Label>
+      <Field label="Note" htmlFor="rec-note">
         <Input id="rec-note" value={note} onChange={(e) => setNote(e.target.value)} maxLength={255} />
-      </div>
+      </Field>
       <FormError>{error}</FormError>
       <Button type="submit" size="lg" className="w-full" disabled={busy}>
         {busy && <Spinner />} Add {type}
@@ -372,32 +403,30 @@ function LinkPicker({ line, candidates, onPick }: { line: StatementLineT; candid
     .sort((a, b) => Math.abs(a.amount - Math.abs(line.amount)) - Math.abs(b.amount - Math.abs(line.amount)));
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted">
-        Statement line: <span className="font-semibold text-ink">{formatGHS(line.amount, { sign: true })}</span> on{" "}
+      <p className="text-[14px] text-muted">
+        Statement line: <span className="font-display tabular font-bold text-ink">{formatGHS(line.amount, { sign: true })}</span> on{" "}
         {new Date(line.occurred_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}. Pick the transaction you recorded for
         it, even if the amount or date differ slightly.
       </p>
       {sameDirection.length === 0 ? (
-        <Card className="text-sm text-muted">No unmatched transactions on this account this month. Use “Add” instead.</Card>
+        <Card tone="sunken" className="text-[14px] text-muted">No unmatched transactions on this account this month. Use “Add” instead.</Card>
       ) : (
-        <Card flush className="divide-y divide-line overflow-hidden">
+        <ListCard>
           {sameDirection.map((t) => (
-            <button
+            <ListRow
               key={t.id}
-              type="button"
               onClick={() => onPick(t)}
-              className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-surface-2"
-            >
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-[15px] font-medium">{t.description || t.category?.name || "Transfer"}</div>
-                <div className="text-xs text-muted">
-                  {new Date(t.occurred_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
-                </div>
-              </div>
-              <div className="tabular text-[15px] font-semibold">{formatGHS(t.amount)}</div>
-            </button>
+              leading={<Glyph icon={t.type === "transfer" ? TransferIcon : categoryIcon(t.category?.name)} size={40} />}
+              title={t.description || t.category?.name || "Transfer"}
+              meta={new Date(t.occurred_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+              trailing={
+                <Num tone={t.type === "income" ? "income" : t.type === "transfer" ? "muted" : "neutral"} className="text-[15.5px]">
+                  {formatGHS(t.amount)}
+                </Num>
+              }
+            />
           ))}
-        </Card>
+        </ListCard>
       )}
     </div>
   );

@@ -5,69 +5,79 @@
 /* Tailwind's dark: variant follows our theme switch (system / light / dark). */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-/* Visual language borrowed from Paylead: deep teal, neon mint, warm paper, hard offset shadows. */
+/*
+ * Trackaa design tokens (Paylead-inspired). See DESIGN.md before adding colours or radii.
+ * Ink = deep teal, Neon = primary action, Paper = page. Everything else is a step of those.
+ */
 :root {
   color-scheme: light;
-  --bg: #f6f5f0;
+  --bg: #f6f5f0;              /* paper */
   --surface: #ffffff;
-  --surface-2: #f1f0ea;
-  --surface-3: #e6e4dc;
-  --border: #e6e3da;
-  --text: #0d2b28;
-  --muted: #5e6b67;
-  --subtle: #97a19d;
+  --surface-2: #f0efe8;       /* sunken: tracks, wells, idle tiles */
+  --surface-3: #e4e2d9;
+  --border: #e4e1d7;
+  --text: #0d2b28;            /* ink */
+  --muted: #5b6965;
+  --subtle: #8f9a96;
   --income: #0a8a47;
-  --income-soft: #e3f6ea;
-  --expense: #dc3f45;
-  --expense-soft: #fdebec;
-  --transfer: #3f5fe0;
-  --transfer-soft: #ecf0fd;
-  --accent: #0d2b28;          /* deep teal: chips, dark controls */
+  --income-soft: #e2f5e9;
+  --expense: #d9363e;
+  --expense-soft: #fdebeb;
+  --warn: #a35f00;
+  --warn-soft: #fcf0d9;
+  --transfer: #46605b;        /* transfers are neutral: they are not income or spending */
+  --transfer-soft: #e8edeb;
+  --accent: #0d2b28;
   --accent-fg: #ffffff;
-  --brand: #2ff26c;           /* neon mint: primary actions */
-  --brand-ink: #0b2b27;       /* text + outline + hard shadow on brand */
-  --brand-soft: #dcfde7;
-  --hero: #0f2d2a;
+  --brand: #2ff26c;           /* neon: primary actions, active states, progress */
+  --brand-ink: #0b2b27;       /* outline + hard shadow on pressable things */
+  --brand-soft: #d9fbe4;
+  --hero: #0f2d2a;            /* ink panels: hero, sidebar, icon tiles */
   --hero-fg: #ffffff;
   --hero-muted: #9fb6b0;
-  --hero-line: rgba(255, 255, 255, 0.09);
+  --hero-line: rgba(255, 255, 255, 0.1);
+  --hero-negative: #ff8f95;   /* money out / negative figures on ink panels */
   --nav: #0f2d2a;
   --deemph: #cdd3cf;
   --grid: #eceae3;
-  --shadow: 0 1px 2px rgba(13, 43, 40, 0.04), 0 1px 3px rgba(13, 43, 40, 0.05);
-  --shadow-lg: 0 14px 34px -14px rgba(13, 43, 40, 0.35);
+  --overlay: rgba(9, 24, 22, 0.55);
+  /* share-of-total ramp: biggest slice darkest */
+  --share-1: #0d2b28; --share-2: #2d5a53; --share-3: #4f8277; --share-4: #7eab9f; --share-5: #aecfc5; --share-6: #d6e7e0;
 }
 
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #091816;
+  --bg: #081614;
   --surface: #0f221f;
-  --surface-2: #152c28;
-  --surface-3: #1d3833;
-  --border: #1d3531;
+  --surface-2: #142b27;
+  --surface-3: #1c3632;
+  --border: #1f3833;
   --text: #ecf5f1;
   --muted: #9bb2ab;
   --subtle: #66807a;
   --income: #3ee08a;
   --income-soft: #0e2d1f;
-  --expense: #fb7185;
-  --expense-soft: #2c1418;
-  --transfer: #8ea2fb;
-  --transfer-soft: #1a1f3d;
+  --expense: #ff7a85;
+  --expense-soft: #301519;
+  --warn: #f5b041;
+  --warn-soft: #2e2210;
+  --transfer: #a7bbb5;
+  --transfer-soft: #1a2e2a;
   --accent: #ecf5f1;
-  --accent-fg: #091816;
+  --accent-fg: #081614;
   --brand: #2ff26c;
-  --brand-ink: #062320;
+  --brand-ink: #03110f;
   --brand-soft: #0f3a26;
   --hero: #12332f;
   --hero-fg: #ecf5f1;
   --hero-muted: #9bb2ab;
-  --hero-line: rgba(255, 255, 255, 0.08);
+  --hero-line: rgba(255, 255, 255, 0.09);
+  --hero-negative: #ff8f95;
   --nav: #0b201d;
   --deemph: #2a4440;
   --grid: #18302c;
-  --shadow: none;
-  --shadow-lg: 0 14px 34px -14px rgba(0, 0, 0, 0.7);
+  --overlay: rgba(0, 0, 0, 0.65);
+  --share-1: #2ff26c; --share-2: #27b85a; --share-3: #2a8a4d; --share-4: #2c6a44; --share-5: #2a5040; --share-6: #243f37;
 }
 
 @theme inline {
@@ -83,6 +93,8 @@
   --color-income-soft: var(--income-soft);
   --color-expense: var(--expense);
   --color-expense-soft: var(--expense-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
   --color-transfer: var(--transfer);
   --color-transfer-soft: var(--transfer-soft);
   --color-accent: var(--accent);
@@ -95,10 +107,19 @@
   --color-hero-fg: var(--hero-fg);
   --color-hero-muted: var(--hero-muted);
   --color-hero-line: var(--hero-line);
+  --color-hero-negative: var(--hero-negative);
   --color-deemph: var(--deemph);
   --color-grid: var(--grid);
-  --shadow-card: var(--shadow);
-  --shadow-float: var(--shadow-lg);
+  --color-overlay: var(--overlay);
+  /* Four radii only. */
+  --radius-tile: 12px;        /* icon tiles, tags, small wells */
+  --radius-control: 14px;     /* buttons, inputs, segmented, list highlights */
+  --radius-card: 20px;        /* cards, panels */
+  --radius-sheet: 28px;       /* sheets, dialogs, hero */
+  /* Hard offset shadows only; no blurred elevation. */
+  --shadow-hard: 3px 3px 0 0 var(--brand-ink);
+  --shadow-hard-lg: 5px 5px 0 0 var(--brand-ink);
+  --shadow-neon: 4px 4px 0 0 var(--brand);
   --font-display: "Bricolage Grotesque Variable", "Inter Variable", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --animate-sheet-in: sheet-in 260ms cubic-bezier(0.32, 0.72, 0, 1);
@@ -157,9 +178,12 @@ button, a, input, select, textarea, label { touch-action: manipulation; }
 /* iOS: don't inflate text when rotating to landscape. */
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
-:focus-visible {
-  outline: 2px solid var(--transfer);
-  outline-offset: 2px;
+/* In the base layer so utilities like outline-none can override it. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: 2px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -179,19 +203,28 @@ body[data-sheet="open"] .toast-wrap {
   animation: draw 420ms ease-out 160ms forwards;
 }
 
-/* Paylead-style "pressable" control: dark outline + hard offset shadow that collapses on press. */
-.pop {
-  border: 2px solid var(--brand-ink);
-  box-shadow: 3px 3px 0 0 var(--brand-ink);
-  transition: transform 90ms ease, box-shadow 90ms ease;
-}
-.pop:active:not(:disabled) {
-  transform: translate(2px, 2px);
-  box-shadow: 1px 1px 0 0 var(--brand-ink);
-}
-.pop:disabled { box-shadow: none; }
-:root[data-theme="dark"] .pop { border-color: #000; box-shadow: 3px 3px 0 0 #000; }
-:root[data-theme="dark"] .pop:active:not(:disabled) { box-shadow: 1px 1px 0 0 #000; }
+@layer components {
+  /* Pressable: ink outline + hard offset shadow that collapses on press. Used by primary buttons, the FAB, featured tiles. */
+  .pop {
+    border: 2px solid var(--brand-ink);
+    box-shadow: var(--shadow-hard);
+    transition: transform 90ms ease, box-shadow 90ms ease;
+  }
+  .pop:active:not(:disabled) {
+    transform: translate(2px, 2px);
+    box-shadow: 1px 1px 0 0 var(--brand-ink);
+  }
+  .pop:disabled { box-shadow: none; }
 
-/* Headlines: heavy and tight. */
-h1, .font-display { font-family: var(--font-display); letter-spacing: -0.03em; }
+  /* Headlines and big numbers: Bricolage, heavy and tight. */
+  h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -0.025em; }
+
+  /* Small uppercase label above a value or section. */
+  .eyebrow {
+    font-size: 11.5px;
+    font-weight: 650;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+}

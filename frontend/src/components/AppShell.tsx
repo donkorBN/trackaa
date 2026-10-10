@@ -11,7 +11,7 @@ import { flushOutbox, useOutboxCount } from "@/lib/offline";
 import { BadgeCelebrations } from "./progress";
 import { QuickAddProvider, useQuickAdd } from "./quick-add";
 import { useToast } from "./toast";
-import { cx, Spinner } from "./ui";
+import { Callout, cx, Kbd, Spinner, Wordmark } from "./ui";
 
 // Mobile bottom bar: two either side of the + button.
 const NAV = [
@@ -104,13 +104,13 @@ function Frame({ children }: { children: ReactNode }) {
       {/* Desktop sidebar (Paylead style: deep teal, neon active item) */}
       <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col bg-nav px-4 py-5 text-white md:flex">
         <Link href="/" className="mb-6 flex items-center gap-2.5 px-2">
-          <Image width={32} height={32} src="/icon-192.png" alt="" className="h-8 w-8 rounded-[10px]" />
+          <Image width={32} height={32} src="/icon-192.png" alt="" className="h-8 w-8 rounded-tile" />
           <Wordmark className="text-white" />
         </Link>
         <button
           type="button"
           onClick={openQuickAdd}
-          className="pop mb-6 flex h-11 items-center justify-center gap-2 rounded-2xl bg-brand text-sm font-bold text-brand-ink"
+          className="pop mb-7 flex h-12 items-center justify-center gap-2 rounded-control bg-brand text-sm font-extrabold text-brand-ink"
         >
           <Plus size={18} strokeWidth={2.75} /> New transaction
         </button>
@@ -120,8 +120,8 @@ function Frame({ children }: { children: ReactNode }) {
               key={href}
               href={href}
               className={cx(
-                "flex h-11 items-center gap-3 rounded-xl px-3 text-[15px] font-medium transition-colors",
-                isActive(href) ? "bg-brand font-semibold text-brand-ink" : "text-white/80 hover:bg-white/[0.07] hover:text-white",
+                "flex h-11 items-center gap-3 rounded-control px-3 text-[15px] font-semibold transition-colors",
+                isActive(href) ? "bg-brand font-bold text-brand-ink" : "text-white/80 hover:bg-white/[0.07] hover:text-white",
               )}
             >
               <Icon size={19} strokeWidth={isActive(href) ? 2.3 : 1.8} /> {label}
@@ -129,22 +129,24 @@ function Frame({ children }: { children: ReactNode }) {
           ))}
         </nav>
         <p className="mt-auto px-3 text-xs text-white/50">
-          Press <kbd className="rounded-md border border-white/20 px-1.5 py-0.5 font-sans text-[11px] text-white/70">N</kbd> to add
+          Press <Kbd>N</Kbd> to add
         </p>
       </aside>
 
       <main className="mx-auto w-full max-w-2xl px-4 pt-[max(1.25rem,env(safe-area-inset-top))] pb-36 md:px-8 md:pt-10 md:pb-16">
         {pending > 0 && (
-          <div className="mb-4 flex items-center gap-2 rounded-2xl bg-surface-2 px-4 py-2.5 text-[13px] text-muted">
-            <CloudOff size={16} /> {pending} transaction{pending === 1 ? "" : "s"} saved offline, syncing when you&apos;re back online
-          </div>
+          <Callout className="mb-4">
+            <span className="inline-flex items-center gap-1.5">
+              <CloudOff size={15} /> {pending} transaction{pending === 1 ? "" : "s"} saved offline, syncing when you&apos;re back online
+            </span>
+          </Callout>
         )}
         {children}
       </main>
 
       {/* Mobile bottom bar */}
       <nav className="fixed inset-x-0 bottom-0 z-40 md:hidden">
-        <div className="pb-safe border-t border-line bg-surface/92 backdrop-blur-xl">
+        <div className="pb-safe border-t-[1.5px] border-line bg-surface">
           <div className="mx-auto grid h-16 max-w-md grid-cols-5 items-center">
             {NAV.slice(0, 2).map((n) => (
               <NavItem key={n.href} {...n} active={isActive(n.href)} />
@@ -154,7 +156,7 @@ function Frame({ children }: { children: ReactNode }) {
                 type="button"
                 onClick={openQuickAdd}
                 aria-label="Add transaction"
-                className="pop -mt-1 flex h-12 w-14 items-center justify-center rounded-2xl bg-brand text-brand-ink"
+                className="pop -mt-1 flex h-12 w-14 items-center justify-center rounded-control bg-brand text-brand-ink"
               >
                 <Plus size={26} strokeWidth={2.75} />
               </button>
@@ -171,21 +173,11 @@ function Frame({ children }: { children: ReactNode }) {
 
 function NavItem({ href, label, icon: Icon, active }: { href: string; label: string; icon: typeof House; active: boolean }) {
   return (
-    <Link href={href} className={cx("flex flex-col items-center gap-1 text-[10.5px] font-semibold", active ? "text-ink" : "text-subtle")}>
-      <span className={cx("flex h-7 w-12 items-center justify-center rounded-full transition-colors", active && "bg-brand-soft dark:bg-brand/15")}>
-        <Icon size={21} strokeWidth={active ? 2.3 : 1.8} />
+    <Link href={href} className={cx("flex flex-col items-center gap-1 text-[10.5px] font-bold", active ? "text-ink" : "text-subtle")}>
+      <span className={cx("flex h-7 w-12 items-center justify-center rounded-full transition-colors", active && "bg-hero text-brand")}>
+        <Icon size={20} strokeWidth={active ? 2.3 : 1.9} />
       </span>
       {label}
     </Link>
-  );
-}
-
-/** "trackaa" with a neon underline, like Paylead's wordmark. */
-export function Wordmark({ className }: { className?: string }) {
-  return (
-    <span className={cx("font-display relative text-[21px] font-extrabold tracking-tight", className)}>
-      trackaa
-      <span className="absolute -bottom-0.5 left-0 h-[3px] w-full rounded-full bg-brand" />
-    </span>
   );
 }

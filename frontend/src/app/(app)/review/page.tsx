@@ -1,12 +1,12 @@
 "use client";
 
-import { Check, Plus } from "lucide-react";
+import { Check, Flame, Plus } from "lucide-react";
 import useSWR from "swr";
 import { useState } from "react";
 import { useQuickAdd } from "@/components/quick-add";
 import { useToast } from "@/components/toast";
 import { TxRow } from "@/components/TxRow";
-import { Card, cx, ErrorBox, Eyebrow, SectionTitle, Skeleton, Spinner } from "@/components/ui";
+import { Button, Card, cx, ErrorBox, ListCard, PageHeader, SectionTitle, Skeleton, Spinner, Stat } from "@/components/ui";
 import { api, fetcher, withQuery } from "@/lib/api";
 import { deviceTimezone, ymd } from "@/lib/dates";
 import { useMe, useOverview, useRefreshAll } from "@/lib/hooks";
@@ -42,7 +42,7 @@ export default function ReviewPage() {
       refreshAll(); // streak + badges
       haptic.success();
       confetti("small");
-      toast({ message: "Nice. Today is fully recorded and counts towards your streak 🔥" });
+      toast({ message: "Nice. Today is fully recorded and counts towards your streak" });
     } catch (err) {
       toast({ message: (err as Error).message, tone: "error" });
     } finally {
@@ -52,24 +52,19 @@ export default function ReviewPage() {
 
   return (
     <div className="space-y-6">
-      <header className="pt-1">
-        <Eyebrow>{new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</Eyebrow>
-        <h1 className="mt-0.5 text-[28px] leading-tight font-bold tracking-tight">Today&apos;s review</h1>
-        <p className="mt-1 text-sm text-muted">Thirty seconds now saves guessing later.</p>
-      </header>
+      <div>
+        <PageHeader
+          eyebrow={new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}
+          title={"Today's review"}
+        />
+        <p className="mt-2 text-[14.5px] text-muted">Thirty seconds now saves guessing later.</p>
+      </div>
 
       {t ? (
-        <Card flush className="grid grid-cols-3 divide-x divide-line">
-          {[
-            { l: "In", v: formatGHS(t.income), c: "text-income" },
-            { l: "Out", v: formatGHS(t.expense), c: "" },
-            { l: "Net", v: formatGHS(t.net, { sign: true }), c: t.net > 0 ? "text-income" : t.net < 0 ? "text-expense" : "" },
-          ].map((s) => (
-            <div key={s.l} className="px-4 py-3.5">
-              <div className="text-xs text-muted">{s.l}</div>
-              <div className={cx("tabular mt-1 truncate text-[15px] font-semibold", s.c)}>{s.v}</div>
-            </div>
-          ))}
+        <Card className="grid grid-cols-3 gap-3">
+          <Stat label="In" value={formatGHS(t.income)} tone="income" size="sm" />
+          <Stat label="Out" value={formatGHS(t.expense)} size="sm" />
+          <Stat label="Net" value={formatGHS(t.net, { sign: true })} tone={t.net > 0 ? "income" : t.net < 0 ? "expense" : "neutral"} size="sm" />
         </Card>
       ) : (
         <Skeleton className="h-20" />
@@ -77,31 +72,33 @@ export default function ReviewPage() {
 
       <section>
         <SectionTitle>Did you forget any of these?</SectionTitle>
-        <Card flush className="divide-y divide-line overflow-hidden">
+        <ListCard>
           {CHECKLIST.map((c, i) => {
             const on = checked.has(i);
             return (
               <button
                 key={c}
                 type="button"
+                aria-pressed={on}
                 onClick={() => setChecked((s) => (s.has(i) ? new Set([...s].filter((x) => x !== i)) : new Set(s).add(i)))}
-                className="flex w-full items-center gap-3 px-4 py-3.5 text-left text-[15px] hover:bg-surface-2"
+                className="flex w-full items-center gap-3 px-4 py-3.5 text-left text-[15px] font-semibold text-ink transition-colors hover:bg-surface-2"
               >
-                <span className={cx("flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition", on ? "border-income bg-income text-white" : "border-line")}>
+                <span
+                  className={cx(
+                    "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                    on ? "border-brand-ink bg-brand text-brand-ink" : "border-line bg-surface",
+                  )}
+                >
                   {on && <Check size={14} strokeWidth={3} />}
                 </span>
-                <span className={cx(on && "text-muted line-through")}>{c}</span>
+                <span className={cx(on && "font-medium text-muted line-through")}>{c}</span>
               </button>
             );
           })}
-        </Card>
-        <button
-          type="button"
-          onClick={openQuickAdd}
-          className="mt-3 flex h-12 w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line bg-surface text-[15px] font-semibold hover:bg-surface-2"
-        >
+        </ListCard>
+        <Button variant="secondary" size="lg" className="mt-3 w-full" onClick={openQuickAdd}>
           <Plus size={18} /> Add something I forgot
-        </button>
+        </Button>
       </section>
 
       <section>
@@ -110,28 +107,33 @@ export default function ReviewPage() {
         {!list.data && !list.error ? (
           <Skeleton className="h-32" />
         ) : list.data && list.data.data.length === 0 ? (
-          <Card className="text-sm text-muted">Nothing recorded today yet.</Card>
+          <Card tone="dashed" className="text-center text-[14px] text-muted">
+            Nothing recorded today yet.
+          </Card>
         ) : (
-          <Card flush className="divide-y divide-line overflow-hidden">
+          <ListCard>
             {list.data?.data.map((tx) => (
               <TxRow key={tx.id} tx={tx} />
             ))}
-          </Card>
+          </ListCard>
         )}
       </section>
 
-      <button
-        type="button"
-        disabled={done || saving || !me}
-        onClick={markDone}
-        className={cx(
-          "flex h-14 w-full items-center justify-center gap-2 rounded-2xl text-[16px] font-semibold transition",
-          done ? "bg-income-soft text-income" : "pop bg-brand font-bold text-brand-ink",
-        )}
-      >
-        {saving ? <Spinner /> : done ? <Check size={20} strokeWidth={2.5} /> : null}
-        {done ? "Today is checked in" : "That’s everything for today"}
-      </button>
+      {done ? (
+        <button
+          type="button"
+          disabled
+          className="flex h-14 w-full items-center justify-center gap-2 rounded-control bg-hero text-[15px] font-bold text-brand"
+        >
+          <Check size={20} strokeWidth={2.5} /> Today is checked in
+          <Flame size={18} fill="currentColor" aria-hidden />
+        </button>
+      ) : (
+        <Button size="lg" className="h-14 w-full text-[16px]" disabled={saving || !me} onClick={markDone}>
+          {saving && <Spinner />}
+          That’s everything for today
+        </Button>
+      )}
     </div>
   );
 }

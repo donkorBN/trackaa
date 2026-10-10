@@ -1,12 +1,12 @@
 "use client";
 
-import { Download, ListPlus, Plus, Search, SlidersHorizontal, X } from "lucide-react";
+import { Download, ListPlus, Plus, Search, SearchX, SlidersHorizontal, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import useSWRInfinite from "swr/infinite";
 import { useQuickAdd } from "@/components/quick-add";
 import { useToast } from "@/components/toast";
 import { TxRow } from "@/components/TxRow";
-import { Button, Card, Chip, cx, EmptyState, ErrorBox, Input, Label, Select, Sheet, Skeleton } from "@/components/ui";
+import { Button, Chip, cx, EmptyState, ErrorBox, Field, Input, Label, ListCard, Num, PageHeader, Select, Sheet, Skeleton } from "@/components/ui";
 import { apiDownload, fetcher, withQuery } from "@/lib/api";
 import { dayLabel, deviceTimezone, shortDate, ymd } from "@/lib/dates";
 import { useAccounts, useBusinesses, useCategories, useOnRefresh } from "@/lib/hooks";
@@ -130,14 +130,17 @@ export default function TransactionsPage() {
 
   return (
     <div className="space-y-4">
-      <header className="flex items-end justify-between pt-1">
-        <h1 className="text-[28px] leading-tight font-bold tracking-tight">Transactions</h1>
-        <Button variant="ghost" size="sm" onClick={exportCsv} disabled={exporting || total === 0}>
-          <Download size={16} /> {exporting ? "Exporting…" : "CSV"}
-        </Button>
-      </header>
+      <PageHeader
+        eyebrow="History"
+        title="Transactions"
+        actions={
+          <Button variant="secondary" size="sm" onClick={exportCsv} disabled={exporting || total === 0}>
+            <Download size={16} /> {exporting ? "Exporting…" : "CSV"}
+          </Button>
+        }
+      />
 
-      <div className="sticky top-0 z-20 -mx-4 space-y-3 bg-bg/90 px-4 pt-2 pb-3 backdrop-blur-xl md:top-0">
+      <div className="sticky top-0 z-20 -mx-4 space-y-3 border-b border-line bg-bg px-4 pt-2 pb-3">
         <div className="flex gap-2">
           <label className="relative flex-1">
             <Search size={17} className="pointer-events-none absolute top-1/2 left-3.5 -translate-y-1/2 text-subtle" />
@@ -148,12 +151,16 @@ export default function TransactionsPage() {
             onClick={() => setSheet(true)}
             aria-label="Filters"
             className={cx(
-              "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition",
-              pills.length ? "border-accent bg-accent text-accent-fg" : "border-line bg-surface text-ink",
+              "relative flex h-12 w-12 shrink-0 items-center justify-center rounded-control border-[1.5px] transition-colors",
+              pills.length ? "border-hero bg-hero text-hero-fg" : "border-line bg-surface text-ink hover:border-ink/40",
             )}
           >
             <SlidersHorizontal size={18} />
-            {pills.length > 0 && <span className="absolute -top-1 -right-1 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-expense px-1 text-[10px] font-bold text-white">{pills.length}</span>}
+            {pills.length > 0 && (
+              <span className="font-display tabular absolute -top-1.5 -right-1.5 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-brand-ink bg-brand px-1 text-[10.5px] font-extrabold text-brand-ink">
+                {pills.length}
+              </span>
+            )}
           </button>
         </div>
         <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4">
@@ -195,29 +202,26 @@ export default function TransactionsPage() {
           }
         />
       ) : items.length === 0 && !error ? (
-        <Card className="py-10 text-center">
-          {pills.length > 0 || debouncedQ || filters.type ? (
-            <>
-              <p className="font-semibold">No matches</p>
-              <p className="mt-1 text-sm text-muted">Try a different search or clear some filters.</p>
-              <Button
-                variant="secondary"
-                className="mt-4"
-                onClick={() => {
-                  setFilters(EMPTY);
-                  setQ("");
-                }}
-              >
-                Clear all
-              </Button>
-            </>
-          ) : (
-            <></>
-          )}
-        </Card>
+        <EmptyState
+          compact
+          icon={<SearchX size={26} />}
+          title="No matches"
+          body="Try a different search or clear some filters."
+          action={
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setFilters(EMPTY);
+                setQ("");
+              }}
+            >
+              Clear all
+            </Button>
+          }
+        />
       ) : (
         <>
-          <p className="px-1 text-xs text-muted">
+          <p className="eyebrow px-0.5">
             {total} transaction{total === 1 ? "" : "s"}
           </p>
           <div className="space-y-5">
@@ -225,21 +229,21 @@ export default function TransactionsPage() {
               const sub = days[g.key];
               return (
                 <section key={g.key}>
-                  <div className="mb-2 flex items-baseline justify-between px-1">
-                    <h2 className="text-[13px] font-semibold text-muted">{dayLabel(g.key)}</h2>
+                  <div className="mb-2 flex items-baseline justify-between gap-3 px-0.5">
+                    <h2 className="eyebrow">{dayLabel(g.key)}</h2>
                     {sub && (sub.income > 0 || sub.expense > 0) && (
-                      <div className="tabular text-xs font-medium">
-                        {sub.income > 0 && <span className="text-income">+{formatGHS(sub.income)}</span>}
+                      <div className="text-[13px]">
+                        {sub.income > 0 && <Num tone="income">+{formatGHS(sub.income)}</Num>}
                         {sub.income > 0 && sub.expense > 0 && <span className="text-subtle"> · </span>}
-                        {sub.expense > 0 && <span className="text-muted">−{formatGHS(sub.expense)}</span>}
+                        {sub.expense > 0 && <Num tone="muted">−{formatGHS(sub.expense)}</Num>}
                       </div>
                     )}
                   </div>
-                  <Card flush className="divide-y divide-line overflow-hidden">
+                  <ListCard>
                     {g.items.map((tx) => (
                       <TxRow key={tx.id} tx={tx} />
                     ))}
-                  </Card>
+                  </ListCard>
                 </section>
               );
             })}
@@ -273,24 +277,23 @@ export default function TransactionsPage() {
             )}
           </div>
           {businesses.length > 0 && (
-          <div>
-            <Label>Personal or business</Label>
-            <div className="flex gap-2">
-              {([
-                ["", "Both"],
-                ["personal", "Personal"],
-                ["business", "Business"],
-              ] as const).map(([v, l]) => (
-                <Chip key={v} active={filters.scope === v} onClick={() => set("scope", v)}>
-                  {l}
-                </Chip>
-              ))}
+            <div>
+              <Label>Personal or business</Label>
+              <div className="flex gap-2">
+                {([
+                  ["", "Both"],
+                  ["personal", "Personal"],
+                  ["business", "Business"],
+                ] as const).map(([v, l]) => (
+                  <Chip key={v} active={filters.scope === v} onClick={() => set("scope", v)}>
+                    {l}
+                  </Chip>
+                ))}
+              </div>
             </div>
-          </div>
           )}
           {filters.scope !== "personal" && businesses.length > 0 && (
-            <div>
-              <Label htmlFor="f-biz">Business</Label>
+            <Field label="Business" htmlFor="f-biz">
               <Select id="f-biz" value={filters.business_id} onChange={(e) => set("business_id", e.target.value)}>
                 <option value="">Any business</option>
                 {businesses.map((b) => (
@@ -300,10 +303,9 @@ export default function TransactionsPage() {
                   </option>
                 ))}
               </Select>
-            </div>
+            </Field>
           )}
-          <div>
-            <Label htmlFor="f-cat">Category</Label>
+          <Field label="Category" htmlFor="f-cat">
             <Select id="f-cat" value={filters.category_id} onChange={(e) => set("category_id", e.target.value)}>
               <option value="">Any category</option>
               {(["expense", "income"] as const).map((t) => (
@@ -319,9 +321,8 @@ export default function TransactionsPage() {
                 </optgroup>
               ))}
             </Select>
-          </div>
-          <div>
-            <Label htmlFor="f-acc">Account</Label>
+          </Field>
+          <Field label="Account" htmlFor="f-acc">
             <Select id="f-acc" value={filters.account_id} onChange={(e) => set("account_id", e.target.value)}>
               <option value="">Any account</option>
               {accounts.map((a) => (
@@ -331,7 +332,7 @@ export default function TransactionsPage() {
                 </option>
               ))}
             </Select>
-          </div>
+          </Field>
           <div className="flex gap-2 pt-1">
             <Button variant="secondary" className="flex-1" size="lg" onClick={() => setFilters({ ...EMPTY, type: filters.type })}>
               Reset

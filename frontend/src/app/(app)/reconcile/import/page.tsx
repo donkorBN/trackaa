@@ -1,10 +1,11 @@
 "use client";
 
-import { ArrowLeft, FileUp, Lock, Settings2 } from "lucide-react";
-import Link from "next/link";
+import { FileUp, Lock, Settings2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { Button, Card, Chip, cx, FormError, Input, Label, Segmented, Select, Spinner, Toggle } from "@/components/ui";
+import {
+  Button, Callout, Card, Chip, cx, Field, FormError, Glyph, Input, Label, Num, PageHeader, Segmented, Select, Spinner, Stat, Toggle,
+} from "@/components/ui";
 import { api, ApiError } from "@/lib/api";
 import { monthName } from "@/lib/dates";
 import { useAccounts, useRefreshAll } from "@/lib/hooks";
@@ -113,12 +114,7 @@ export default function ImportStatementPage() {
 
   return (
     <div className="space-y-6">
-      <header className="pt-1">
-        <Link href="/reconcile" className="inline-flex items-center gap-1 text-[13px] font-medium text-muted hover:text-ink">
-          <ArrowLeft size={15} /> Reconcile
-        </Link>
-        <h1 className="mt-1 text-[28px] leading-tight font-bold tracking-tight">Import statement</h1>
-      </header>
+      <PageHeader back={{ href: "/reconcile", label: "Reconcile" }} title="Import statement" />
 
       <section className="space-y-2">
         <Label>Which account is this statement for?</Label>
@@ -134,10 +130,14 @@ export default function ImportStatementPage() {
         </div>
       </section>
 
-      <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-3xl border-2 border-dashed border-line bg-surface px-6 py-8 text-center hover:bg-surface-2">
-        {reading ? <Spinner className="text-muted" /> : <FileUp size={26} className="text-muted" />}
-        <span className="text-[15px] font-semibold">{file ? file.name : "Choose your statement"}</span>
-        <span className="text-xs text-muted">CSV, Excel (.xlsx) or PDF · read on this device</span>
+      <label className="block cursor-pointer">
+        <Card tone="dashed" className="flex flex-col items-center justify-center gap-2 px-6 py-8 text-center transition-colors hover:border-ink/40">
+          <Glyph size={48} active={!!file}>
+            {reading ? <Spinner /> : <FileUp size={22} strokeWidth={2} />}
+          </Glyph>
+          <span className="mt-1 max-w-full truncate text-[15px] font-semibold text-ink">{file ? file.name : "Choose your statement"}</span>
+          <span className="text-[12.5px] text-muted">CSV, Excel (.xlsx) or PDF · read on this device</span>
+        </Card>
         <input
           type="file"
           accept=".csv,.xlsx,.pdf,text/csv,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -154,12 +154,14 @@ export default function ImportStatementPage() {
 
       {needsPassword && file && (
         <Card className="space-y-3">
-          <div className="flex items-center gap-2 text-[15px] font-semibold">
-            <Lock size={16} /> This PDF is password-protected
-          </div>
-          <p className="text-sm text-muted">
-            Enter the statement password (often sent with the statement by SMS or email). It isn&apos;t stored.
-          </p>
+          <Callout tone="warn">
+            <span className="flex items-center gap-1.5 font-semibold">
+              <Lock size={14} /> This PDF is password-protected
+            </span>
+            <span className="mt-0.5 block">
+              Enter the statement password (often sent with the statement by SMS or email). It isn&apos;t stored.
+            </span>
+          </Callout>
           <form
             className="flex gap-2"
             onSubmit={(e) => {
@@ -175,7 +177,7 @@ export default function ImportStatementPage() {
               className="min-w-0 flex-1"
               aria-label="PDF password"
             />
-            <Button type="submit" disabled={!password || reading}>
+            <Button type="submit" variant="ink" className="h-12" disabled={!password || reading}>
               Open
             </Button>
           </form>
@@ -188,24 +190,24 @@ export default function ImportStatementPage() {
         <>
           <Card className="space-y-4">
             <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="text-[15px] font-semibold">
-                  {parsed.lines.length} transaction{parsed.lines.length === 1 ? "" : "s"} found
-                </div>
+              <div className="min-w-0">
+                <h2 className="text-[19px] leading-tight font-bold text-ink">
+                  <Num>{parsed.lines.length}</Num> transaction{parsed.lines.length === 1 ? "" : "s"} found
+                </h2>
                 {parsed.skipped.length > 0 && (
-                  <div className="text-xs text-muted">
+                  <div className="mt-0.5 text-[12.5px] text-muted">
                     {parsed.skipped.length} rows skipped (no date or amount, e.g. headings and totals)
                   </div>
                 )}
               </div>
-              <Button variant="ghost" size="sm" onClick={() => setShowColumns((s) => !s)}>
+              <Button variant="secondary" size="sm" aria-expanded={showColumns} onClick={() => setShowColumns((s) => !s)}>
                 <Settings2 size={15} /> Columns
               </Button>
             </div>
 
             {showColumns && (
-              <div className="space-y-3 rounded-2xl bg-surface-2 p-4">
-                <p className="text-xs text-muted">
+              <Card tone="sunken" flush className="space-y-3 p-4">
+                <p className="text-[12.5px] text-muted">
                   We guessed these from the column headings. Fix any that look wrong; the preview updates as you go.
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -279,13 +281,12 @@ export default function ImportStatementPage() {
                   selected={mapping.fees}
                   onToggle={(i) => toggleMulti("fees", i)}
                 />
-              </div>
+              </Card>
             )}
 
             {months.length > 0 && (
               <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <Label htmlFor="period">Statement month</Label>
+                <Field label="Statement month" htmlFor="period">
                   <Select id="period" value={period ?? ""} onChange={(e) => setPeriod(e.target.value)}>
                     {months.map((m) => (
                       <option key={m} value={m}>
@@ -293,8 +294,8 @@ export default function ImportStatementPage() {
                       </option>
                     ))}
                   </Select>
-                </div>
-                <div className="space-y-2 pt-1 text-sm">
+                </Field>
+                <div className="space-y-2 pt-1 text-[14px] font-semibold text-ink sm:pt-7">
                   <label className="flex items-center justify-between gap-3">
                     <span>Only lines in this month</span>
                     <Toggle label="Only lines in this month" checked={onlyMonth} onChange={setOnlyMonth} />
@@ -311,23 +312,21 @@ export default function ImportStatementPage() {
 
             {lines.length > 0 && (
               <>
-                <div className="tabular grid grid-cols-2 gap-2 text-sm">
-                  <div className="rounded-2xl bg-surface-2 px-3 py-2.5">
-                    <div className="text-xs text-muted">Money in</div>
-                    <div className="font-semibold">{formatGHS(totalIn)}</div>
-                  </div>
-                  <div className="rounded-2xl bg-surface-2 px-3 py-2.5">
-                    <div className="text-xs text-muted">Money out</div>
-                    <div className="font-semibold">{formatGHS(totalOut)}</div>
-                  </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Card tone="sunken" flush className="px-4 py-3">
+                    <Stat label="Money in" value={formatGHS(totalIn)} tone="income" size="sm" />
+                  </Card>
+                  <Card tone="sunken" flush className="px-4 py-3">
+                    <Stat label="Money out" value={formatGHS(totalOut)} tone="expense" size="sm" />
+                  </Card>
                 </div>
                 <div className="-mx-5 max-h-80 overflow-auto border-y border-line">
                   <table className="w-full text-[13px]">
-                    <thead className="sticky top-0 bg-surface text-xs text-muted">
+                    <thead className="eyebrow sticky top-0 border-b border-line bg-surface">
                       <tr>
-                        <th className="px-5 py-2 text-left font-medium">Date</th>
-                        <th className="py-2 text-left font-medium">Details</th>
-                        <th className="px-5 py-2 text-right font-medium">Amount</th>
+                        <th className="px-5 py-2 text-left font-[650]">Date</th>
+                        <th className="py-2 text-left font-[650]">Details</th>
+                        <th className="px-5 py-2 text-right font-[650]">Amount</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-line">
@@ -336,20 +335,20 @@ export default function ImportStatementPage() {
                           <td className="px-5 py-2 whitespace-nowrap text-muted">
                             {new Date(l.occurred_at).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
                           </td>
-                          <td className="max-w-0 truncate py-2">{l.description ?? "—"}</td>
-                          <td className={cx("tabular px-5 py-2 text-right font-medium whitespace-nowrap", l.amount > 0 && "text-income")}>
+                          <td className="max-w-0 truncate py-2 text-ink">{l.description ?? "—"}</td>
+                          <td className={cx("font-display tabular px-5 py-2 text-right font-bold whitespace-nowrap", l.amount > 0 ? "text-income" : "text-ink")}>
                             {formatGHS(l.amount, { sign: true })}
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
-                  {lines.length > 50 && <p className="px-5 py-2 text-xs text-muted">…and {lines.length - 50} more</p>}
+                  {lines.length > 50 && <p className="px-5 py-2 text-[12.5px] text-muted">…and {lines.length - 50} more</p>}
                 </div>
               </>
             )}
             {parsed.lines.length === 0 && (
-              <p className="text-sm text-muted">No transactions found yet. Open “Columns” and point us at the date and amount columns.</p>
+              <Callout>No transactions found yet. Open “Columns” and point us at the date and amount columns.</Callout>
             )}
           </Card>
 
@@ -376,9 +375,8 @@ function ColumnSelect({
   optional?: boolean;
 }) {
   return (
-    <div>
-      <Label>{label}</Label>
-      <Select value={value ?? ""} onChange={(e) => onChange(e.target.value)}>
+    <Field label={label}>
+      <Select value={value ?? ""} onChange={(e) => onChange(e.target.value)} aria-label={label}>
         <option value="">{optional ? "None" : "Choose a column"}</option>
         {options.map((o) => (
           <option key={o.i} value={o.i}>
@@ -386,7 +384,7 @@ function ColumnSelect({
           </option>
         ))}
       </Select>
-    </div>
+    </Field>
   );
 }
 

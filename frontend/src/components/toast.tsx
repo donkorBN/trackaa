@@ -38,16 +38,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={toast.id}
             className={cx(
-              "pointer-events-auto flex w-full max-w-md animate-pop items-center gap-3 rounded-2xl py-2.5 pr-2 pl-4 text-sm shadow-float",
-              toast.tone === "error" ? "bg-expense text-white" : "bg-hero text-hero-fg dark:bg-surface-3",
+              "pointer-events-auto flex w-full max-w-md animate-pop items-center gap-3 rounded-control border-2 border-brand-ink py-2 pr-2 pl-4 text-sm font-medium shadow-hard",
+              toast.tone === "error" ? "bg-expense text-white" : "bg-hero text-hero-fg",
             )}
           >
-            {toast.tone === "error" ? <CircleAlert size={18} className="shrink-0" /> : <CircleCheck size={18} className="shrink-0 text-income" />}
+            {toast.tone === "error" ? <CircleAlert size={18} className="shrink-0" /> : <CircleCheck size={18} className="shrink-0 text-brand" />}
             <span className="min-w-0 flex-1 py-1">{toast.message}</span>
             {toast.action && (
               <button
                 type="button"
-                className="shrink-0 rounded-xl bg-white/10 px-3 py-1.5 font-semibold hover:bg-white/20"
+                className="shrink-0 rounded-tile bg-brand px-3 py-1.5 font-bold text-brand-ink"
                 onClick={() => {
                   toast.action!.onClick();
                   setToast(null);

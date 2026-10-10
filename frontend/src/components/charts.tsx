@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { formatGHS, formatShort } from "@/lib/money";
-import { cx } from "./ui";
+import { CircleAlert, CircleCheck, TriangleAlert, type LucideIcon } from "lucide-react";
+import { cx, ProgressBar, Segmented, Tag, type BarTone, type TagTone } from "./ui";
 
 /* ------------------------------------------------------------------ *
  * Small, dependency-free SVG charts.
@@ -58,7 +59,7 @@ function Tooltip({ tip, width }: { tip: TipState | null; width: number }) {
   const left = Math.min(Math.max(tip.x, 70), Math.max(width - 70, 70));
   return (
     <div
-      className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-xl border border-line bg-surface px-3 py-2 text-xs shadow-float"
+      className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-full rounded-control border-2 border-brand-ink bg-surface px-3 py-2 text-xs shadow-hard"
       style={{ left, top: Math.max(tip.y - 8, 0) }}
       role="status"
     >
@@ -90,29 +91,23 @@ export function ChartCard({
 }) {
   const [view, setView] = useState<"chart" | "table">("chart");
   return (
-    <section className="rounded-3xl border border-line bg-surface p-5 shadow-card">
+    <section className="rounded-card border border-line bg-surface p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="text-[15px] font-semibold tracking-tight">{title}</h2>
-          {subtitle && <div className="mt-0.5 text-[13px] text-muted">{subtitle}</div>}
+          <h2 className="text-[19px] leading-tight font-bold">{title}</h2>
+          {subtitle && <div className="mt-1 text-[13px] text-muted">{subtitle}</div>}
         </div>
-        <div className="flex shrink-0 rounded-xl bg-surface-2 p-0.5 text-xs font-medium" role="tablist" aria-label={`${title} view`}>
-          {(["chart", "table"] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              role="tab"
-              aria-selected={view === v}
-              onClick={() => setView(v)}
-              className={cx(
-                "h-7 rounded-lg px-2.5 capitalize",
-                view === v ? "bg-surface text-ink shadow-card dark:bg-surface-3" : "text-muted",
-              )}
-            >
-              {v}
-            </button>
-          ))}
-        </div>
+        <Segmented
+          size="sm"
+          className="shrink-0"
+          label={`${title} view`}
+          value={view}
+          onChange={setView}
+          options={[
+            { value: "chart", label: "Chart" },
+            { value: "table", label: "Table" },
+          ]}
+        />
       </div>
       {legend && view === "chart" && <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">{legend}</div>}
       <div className="mt-4">
@@ -493,17 +488,26 @@ export function meterTone(spent: number, amount: number, expected?: number): Met
   return "good";
 }
 
-const TONE: Record<MeterTone, { fill: string; track: string; label: string }> = {
-  good: { fill: "var(--income)", track: "var(--income-soft)", label: "On track" },
-  warn: { fill: "#d97706", track: "color-mix(in oklab, #d97706 16%, transparent)", label: "Spending fast" },
-  over: { fill: "var(--expense)", track: "var(--expense-soft)", label: "Over budget" },
+const TONE: Record<MeterTone, { bar: BarTone; tag: TagTone; label: string; icon: LucideIcon }> = {
+  good: { bar: "good", tag: "good", label: "On track", icon: CircleCheck },
+  warn: { bar: "warn", tag: "warn", label: "Spending fast", icon: TriangleAlert },
+  over: { bar: "bad", tag: "bad", label: "Over budget", icon: CircleAlert },
 };
 
 export function toneLabel(t: MeterTone) {
   return TONE[t].label;
 }
 
-/** Progress meter; the fill carries state and the track is a lighter step of the same hue. Optional pace tick. */
+/** Budget status as a labelled tag (icon + words, never colour alone). */
+export function ToneTag({ tone }: { tone: MeterTone }) {
+  return (
+    <Tag tone={TONE[tone].tag} icon={TONE[tone].icon}>
+      {TONE[tone].label}
+    </Tag>
+  );
+}
+
+/** Budget meter: a ProgressBar whose fill carries the budget state, with an optional pace tick. */
 export function Meter({
   value,
   max,
@@ -517,18 +521,5 @@ export function Meter({
   pace?: number;
   height?: number;
 }) {
-  const pct = max > 0 ? Math.min(value / max, 1) * 100 : 0;
-  const pacePct = pace !== undefined && max > 0 ? Math.min(pace / max, 1) * 100 : null;
-  return (
-    <div className="relative w-full rounded-full" style={{ height, background: TONE[tone].track }}>
-      <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${pct}%`, background: TONE[tone].fill }} />
-      {pacePct !== null && pacePct > 0 && pacePct < 100 && (
-        <div
-          className="absolute -top-1 -bottom-1 w-0.5 rounded-full bg-ink"
-          style={{ left: `${pacePct}%` }}
-          title="Where you'd be spending evenly"
-        />
-      )}
-    </div>
-  );
+  return <ProgressBar value={value} max={max} tone={TONE[tone].bar} pace={pace} size={height <= 6 ? "sm" : height >= 12 ? "lg" : "md"} label={TONE[tone].label} />;
 }
