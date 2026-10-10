@@ -4,6 +4,7 @@ import { useEffect, type ReactNode } from "react";
 import { SWRConfig } from "swr";
 import "@/lib/install"; // start listening for the install prompt early
 import { applyTheme, getThemePref } from "@/lib/theme";
+import { ServerWaking, UpdateReady } from "./ServerWaking";
 import { ToastProvider } from "./toast";
 
 export function Providers({ children }: { children: ReactNode }) {
@@ -21,7 +22,11 @@ export function Providers({ children }: { children: ReactNode }) {
 
   return (
     <SWRConfig value={{ revalidateOnFocus: true, shouldRetryOnError: (err) => err?.status !== 401 && err?.status !== 404 }}>
-      <ToastProvider>{children}</ToastProvider>
+      <ToastProvider>
+        <ServerWaking />
+        <UpdateReady />
+        {children}
+      </ToastProvider>
     </SWRConfig>
   );
 }

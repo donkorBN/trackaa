@@ -4,14 +4,16 @@ import { MailCheck } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { authLinkClass, AuthLayout, firstError } from "@/components/AuthForm";
-import { Button, Field, FormError, Glyph, Input, Spinner } from "@/components/ui";
+import { Button, Callout, Field, FormError, Glyph, Input, Spinner } from "@/components/ui";
 import { api } from "@/lib/api";
+import { useMeta } from "@/lib/hooks";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { data: meta } = useMeta();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -33,7 +35,16 @@ export default function ForgotPasswordPage() {
       subtitle="We'll email you a link to choose a new one."
       footer={<Link href="/login" className={authLinkClass}>Back to log in</Link>}
     >
-      {sent ? (
+      {meta && !meta.mail_enabled ? (
+        <div className="space-y-4">
+          <Callout tone="warn">
+            Email isn&apos;t set up on this Trackaa yet, so reset links can&apos;t be sent. Ask the person who runs it to turn on email.
+          </Callout>
+          <p className="text-[13.5px] leading-relaxed text-muted">
+            Still logged in on another device? You can change your password there in <span className="font-semibold text-ink">Settings → Change password</span>.
+          </p>
+        </div>
+      ) : sent ? (
         <div className="flex flex-col items-center py-2 text-center">
           <Glyph icon={MailCheck} size={52} active />
           <p className="font-display mt-4 text-[19px] font-bold text-ink">Check your inbox</p>

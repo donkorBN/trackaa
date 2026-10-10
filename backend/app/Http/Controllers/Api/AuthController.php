@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Middleware\ExtendTokenLifetime;
 use App\Models\User;
+use App\Services\BusinessCategories;
 use App\Services\DefaultSetup;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Validation\Rules\Password as PasswordRule;
@@ -15,14 +17,29 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    public function register(Request $request, DefaultSetup $setup): JsonResponse
+    /** Public facts the sign-in screens need: is email set up, is an invite code required. */
+    public function meta(): JsonResponse
+    {
+        return response()->json([
+            'mail_enabled' => ! in_array(config('mail.default'), ['log', 'array'], true),
+            'invite_required' => filled(config('trackaa.invite_code')),
+        ]);
+    }
+
+    public function register(Request $request, DefaultSetup $setup, BusinessCategories $businessCategories): JsonResponse
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', PasswordRule::min(8)],
             'timezone' => ['nullable', 'timezone:all'],
+            'invite_code' => ['nullable', 'string', 'max:100'],
         ]);
+
+        $code = (string) config('trackaa.invite_code');
+        if ($code !== '' && ! hash_equals($code, trim((string) ($data['invite_code'] ?? '')))) {
+            throw ValidationException::withMessages(['invite_code' => 'That invite code isn\'t right. Ask the person who invited you.']);
+        }
 
         $user = User::create([
             'name' => $data['name'],
@@ -31,6 +48,7 @@ class AuthController extends Controller
             'timezone' => $data['timezone'] ?? 'Africa/Accra',
         ]);
         $setup->provision($user);
+        $businessCategories->sync($user); // no businesses yet: business categories start hidden
 
         return response()->json(['token' => $this->issueToken($user), 'user' => $user->toApi()], 201);
     }
@@ -53,6 +71,33 @@ class AuthController extends Controller
     public function logout(Request $request): JsonResponse
     {
         $request->user()->currentAccessToken()?->delete();
+
+        return response()->json(null, 204);
+    }
+
+    /** Permanently deletes the account and everything in it. Needs the current password. */
+    public function destroy(Request $request): JsonResponse
+    {
+        $request->validate(['password' => ['required', 'string']]);
+        $user = $request->user();
+        if (! Hash::check($request->input('password'), $user->password)) {
+            throw ValidationException::withMessages(['password' => 'That password isn\'t right.']);
+        }
+
+        DB::transaction(function () use ($user) {
+            // Children first: transactions restrict deletes of the accounts and categories they use.
+            $user->statements()->delete();
+            $user->goals()->delete();
+            $user->budgets()->delete();
+            $user->transactions()->delete();
+            $user->activityDays()->delete();
+            $user->categories()->delete();
+            $user->businesses()->delete();
+            $user->accounts()->delete();
+            $user->tokens()->delete();
+            DB::table('password_reset_tokens')->where('email', $user->email)->delete();
+            $user->delete();
+        });
 
         return response()->json(null, 204);
     }

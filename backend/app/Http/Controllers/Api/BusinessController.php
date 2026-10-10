@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\BusinessCategories;
 use App\Models\Business;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -23,7 +24,10 @@ class BusinessController extends Controller
     {
         $data = $request->validate(['name' => ['required', 'string', 'max:80']]);
 
-        return response()->json($this->present($request->user()->businesses()->create($data)), 201);
+        $business = $request->user()->businesses()->create($data);
+        app(BusinessCategories::class)->sync($request->user());
+
+        return response()->json($this->present($business), 201);
     }
 
     public function update(Request $request, Business $business): JsonResponse
@@ -38,6 +42,7 @@ class BusinessController extends Controller
             $business->setArchived((bool) $data['archived']);
         }
         $business->save();
+        app(BusinessCategories::class)->sync($request->user());
 
         return response()->json($this->present($business));
     }
@@ -52,6 +57,7 @@ class BusinessController extends Controller
             'This is used by existing transactions. Archive it instead.',
         );
         $business->delete();
+        app(BusinessCategories::class)->sync($request->user());
 
         return response()->json(null, 204);
     }

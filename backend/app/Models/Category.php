@@ -14,7 +14,7 @@ class Category extends Model
 
     protected function casts(): array
     {
-        return ['archived_at' => 'datetime'];
+        return ['archived_at' => 'datetime', 'auto_hidden' => 'boolean'];
     }
 
     public function transactions(): HasMany

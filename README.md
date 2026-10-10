@@ -56,6 +56,7 @@ Open http://localhost:3000, create an account, and tap **+**.
 | `APP_KEY` | Laravel key (`php artisan key:generate`) |
 | `APP_URL` | Public URL of the API |
 | `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` | Database (`sqlite`, `mysql` or `pgsql`) |
+| `INVITE_CODE` | *Optional.* When set, sign-up asks for this code, so only people you share it with can create accounts |
 | `FRONTEND_URL` | Frontend origin(s) allowed by CORS, comma-separated, e.g. `https://trackaa.vercel.app` |
 | `MAIL_MAILER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_ADDRESS` | Sends password-reset emails. Any SMTP provider works (Resend, Mailgun, Brevo, Gmail SMTP). Locally `MAIL_MAILER=log` writes the email to `storage/logs/laravel.log` |
 
@@ -88,10 +89,14 @@ Render's own free Postgres is deleted after 30 days, so use Neon (or a *paid* Re
 
 Every start runs database migrations automatically. Every push to `main` redeploys.
 
-Free Render services sleep after 15 minutes without visits. The first visit after that takes about a minute while the app wakes up; after that it's fast. That's fine for personal use, so there's no need to keep it awake (a pinger would also keep Neon awake and use up its free compute).
+**Deploy only when tests pass:** the repo has a GitHub Actions workflow (`.github/workflows/ci.yml`) that runs the backend tests on SQLite and PostgreSQL plus the frontend lint, typecheck, parser tests and build. In Render → your service → **Settings → Build & Deploy → Auto-Deploy**, choose **After CI Checks Pass**.
 
-### 3. Password-reset emails (optional but recommended)
-In Render → **Environment**, add your email provider's SMTP details, then **Save** (it redeploys). Resend and Brevo both have free tiers.
+**Keep it private:** in Render → **Environment**, add `INVITE_CODE` with a word you'll share with friends. Sign-up then asks for it. Existing accounts are unaffected.
+
+Free Render services sleep after 15 minutes without visits. The first visit after that takes about a minute while the app wakes up; after that it's fast. That's fine for personal use, so there's no need to keep it awake (a pinger would also keep Neon awake and use up its free compute). Once the app has been opened on a phone, it opens instantly from its offline copy and shows *Waking up the server…* while the API starts; anything saved meanwhile is kept and synced.
+
+### 3. Password-reset emails (recommended)
+Until this is set up, the *Forgot password* page says email isn't available instead of pretending to send a link. In Render → **Environment**, add your email provider's SMTP details, then **Save** (it redeploys). Resend and Brevo both have free tiers.
 
 ```
 MAIL_MAILER=smtp
@@ -114,7 +119,7 @@ To host the website separately (e.g. on Vercel), build `frontend` with `NEXT_PUB
 ## Testing
 
 ```bash
-cd backend && php artisan test      # 29 feature tests
+cd backend && php artisan test      # 35 feature tests
 cd frontend && npm test && npm run lint && npx tsc --noEmit && npm run build
 ```
 
@@ -132,6 +137,8 @@ The backend tests cover:
 - **one user cannot read, edit or delete another user's data, or attach records to another user's accounts or categories**
 - the password flows: forgot, reset (which signs out other devices) and change
 - login sessions that expire after 90 days without use and extend themselves with use
+- invite-only sign-up, account deletion (password required, everything removed, nobody else affected)
+- business categories hidden for personal-only users and restored when a business is added, never touching ones the user archived or used
 - the server-side end-of-day review
 - the CSV export
 - category usage ranking
@@ -228,7 +235,8 @@ All endpoints need a bearer token except the two auth routes.
 
 ```
 POST   /api/auth/register  /api/auth/login  /api/auth/logout
-GET    /api/me            PATCH /api/me              (name, timezone)
+GET    /api/meta          (public: mail_enabled, invite_required)
+GET    /api/me            PATCH /api/me              (name, timezone)    DELETE /api/me  { password }
 GET    /api/overview      ?scope=&business_id=&period=today|week|month|custom&from=&to=&tz=
 GET    /api/transactions  ?q=&type=&scope=&business_id=&category_id=&account_id=&from=&to=&page=
 POST   /api/transactions  PATCH/DELETE /api/transactions/{id}
@@ -242,7 +250,7 @@ POST   /api/review        { date }  check in (today or yesterday)
 ## Known limitations
 
 - **On Render's free plan the app sleeps when idle**, so the first visit after a quiet spell takes about a minute.
-- **Password-reset emails need an SMTP provider** configured (`MAIL_*`).
+- **Password-reset emails need an SMTP provider** configured (`MAIL_*`); without one, the reset page says so.
 - **Login tokens are kept in `localStorage`.** They expire after 90 days of not being used. Fine for a personal tool; for extra hardening, switch to cookie-based Sanctum SPA auth.
 - **Offline**: new transactions are queued while offline. Editing or deleting an existing transaction still needs a connection.
 - **Category type can't be changed after creation**, to keep past transactions consistent. Archive the category and create a new one instead.

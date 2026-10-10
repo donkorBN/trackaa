@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  ChevronRight, Download, KeyRound, Trash2, LogOut, Monitor, Moon, Plus, Smartphone, Sun,
+  ChevronRight, Download, KeyRound, Trash2, LogOut, UserX, Monitor, Moon, Plus, Smartphone, Sun,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
@@ -452,6 +452,7 @@ function Preferences() {
 function Security() {
   const router = useRouter();
   const [changing, setChanging] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   async function logout() {
     await api("/auth/logout", { method: "POST" }).catch(() => {});
     setToken(null);
@@ -463,12 +464,80 @@ function Security() {
       <ListCard>
         <ListRow leading={<Glyph icon={KeyRound} />} title="Change password" trailing={Chevron} onClick={() => setChanging(true)} />
         <ListRow leading={<Glyph icon={LogOut} tone="expense" />} title={<span className="text-expense">Log out</span>} onClick={logout} />
+        <ListRow
+          leading={<Glyph icon={UserX} tone="expense" />}
+          title={<span className="text-expense">Delete account</span>}
+          meta="Permanently removes your account and all its data"
+          trailing={Chevron}
+          onClick={() => setDeleting(true)}
+        />
       </ListCard>
       <p className="mt-8 text-center text-[12px] text-subtle">Trackaa · all amounts in Ghana cedis (GH₵)</p>
       <Sheet open={changing} onClose={() => setChanging(false)} title="Change password">
         {changing && <PasswordForm onDone={() => setChanging(false)} />}
       </Sheet>
+      <Sheet open={deleting} onClose={() => setDeleting(false)} title="Delete account">
+        {deleting && <DeleteAccountForm />}
+      </Sheet>
     </section>
+  );
+}
+
+function DeleteAccountForm() {
+  const router = useRouter();
+  const toast = useToast();
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+
+  async function exportFirst() {
+    setExporting(true);
+    try {
+      await apiDownload("/transactions/export", "trackaa-transactions.csv");
+    } catch (e) {
+      setError(errorText(e));
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await api("/me", { method: "DELETE", body: { password } });
+      try {
+        Object.keys(localStorage).filter((k) => k.startsWith("trackaa.")).forEach((k) => localStorage.removeItem(k));
+      } catch {
+        /* storage unavailable */
+      }
+      setToken(null);
+      toast({ message: "Your account and data were deleted." });
+      router.replace("/login");
+    } catch (err) {
+      setError(errorText(err));
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form className="space-y-4" onSubmit={submit}>
+      <Callout tone="bad">
+        This deletes your account and every transaction, account, budget, goal and statement in it. It can&apos;t be undone.
+      </Callout>
+      <Button variant="secondary" className="w-full" onClick={exportFirst} disabled={exporting}>
+        {exporting ? <Spinner /> : <Download size={16} />} Download my transactions first (CSV)
+      </Button>
+      <Field label="Type your password to confirm" htmlFor="delete-pw">
+        <Input id="delete-pw" type="password" required autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+      </Field>
+      <FormError>{error}</FormError>
+      <Button type="submit" variant="danger" size="lg" className="w-full" disabled={busy || !password}>
+        {busy ? <Spinner /> : <Trash2 size={17} />} Delete my account forever
+      </Button>
+    </form>
   );
 }
 

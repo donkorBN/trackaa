@@ -14,6 +14,8 @@ use App\Http\Controllers\Api\TransactionController;
 use App\Http\Middleware\ExtendTokenLifetime;
 use Illuminate\Support\Facades\Route;
 
+Route::get('/meta', [AuthController::class, 'meta']);
+
 Route::middleware('throttle:10,1')->group(function () {
     Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/login', [AuthController::class, 'login']);
@@ -25,6 +27,7 @@ Route::middleware(['auth:sanctum', ExtendTokenLifetime::class])->group(function 
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/me', [AuthController::class, 'me']);
     Route::patch('/me', [AuthController::class, 'update']);
+    Route::delete('/me', [AuthController::class, 'destroy'])->middleware('throttle:10,1');
     Route::put('/me/password', [AuthController::class, 'changePassword'])->middleware('throttle:10,1');
     Route::post('/review', [AuthController::class, 'review']);
 

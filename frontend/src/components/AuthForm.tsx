@@ -8,8 +8,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import { api, ApiError, getToken, setToken } from "@/lib/api";
 import { deviceTimezone } from "@/lib/dates";
 import type { User } from "@/lib/types";
-import { Wordmark } from "./ui";
-import { Button, Card, Field, FormError, Input, Label, Spinner } from "./ui";
+import { useMeta } from "@/lib/hooks";
+import { Button, Card, Field, FormError, Input, Label, Spinner, Wordmark } from "./ui";
 
 export function AuthLayout({ title, subtitle, children, footer }: { title: string; subtitle?: string; children: ReactNode; footer?: ReactNode }) {
   return (
@@ -57,7 +57,8 @@ export function firstError(err: unknown) {
 
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const router = useRouter();
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", invite_code: "" });
+  const { data: meta } = useMeta();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [k]: e.target.value });
@@ -75,7 +76,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       const body =
         mode === "login"
           ? { email: form.email, password: form.password }
-          : { ...form, password_confirmation: form.password, timezone: deviceTimezone() };
+          : { ...form, invite_code: form.invite_code || undefined, password_confirmation: form.password, timezone: deviceTimezone() };
       const res = await api<{ token: string; user: User }>(`/auth/${mode}`, { method: "POST", body });
       setToken(res.token);
       router.replace(mode === "register" ? "/welcome/" : "/");
@@ -103,6 +104,11 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       }
     >
       <form onSubmit={submit} className="space-y-4">
+        {!login && meta?.invite_required && (
+          <Field label="Invite code" htmlFor="invite_code" hint="Trackaa is invite-only. Ask the person who shared it with you.">
+            <Input id="invite_code" required autoComplete="off" autoCapitalize="off" value={form.invite_code} onChange={set("invite_code")} />
+          </Field>
+        )}
         {!login && (
           <Field label="Your name" htmlFor="name">
             <Input id="name" required autoComplete="name" value={form.name} onChange={set("name")} />

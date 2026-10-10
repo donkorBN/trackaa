@@ -13,7 +13,9 @@ export const haptic = {
 
 function vibrate(pattern: number | number[]) {
   try {
-    if (!reduced() && "vibrate" in navigator) navigator.vibrate(pattern);
+    // Browsers block vibration until the user has interacted with the page.
+    const activated = (navigator as Navigator & { userActivation?: { hasBeenActive: boolean } }).userActivation?.hasBeenActive ?? true;
+    if (activated && !reduced() && "vibrate" in navigator) navigator.vibrate(pattern);
   } catch {
     /* unsupported */
   }

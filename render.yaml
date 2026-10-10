@@ -30,5 +30,10 @@ services:
         value: stderr
       - key: LOG_LEVEL
         value: warning
+      # Invite-only sign-up: set a code in the dashboard and share it with friends. Leave empty for open sign-up.
+      - key: INVITE_CODE
+        sync: false
+      # Password-reset emails. Until SMTP is set up (Resend/Brevo are free), "Forgot password"
+      # says so instead of pretending to send. Set MAIL_MAILER=smtp plus the MAIL_* values.
       - key: MAIL_MAILER
         value: log

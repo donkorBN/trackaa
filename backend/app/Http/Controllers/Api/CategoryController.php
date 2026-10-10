@@ -43,6 +43,7 @@ class CategoryController extends Controller
         $category->fill($data);
         if (array_key_exists('archived', $data)) {
             $category->setArchived((bool) $data['archived']);
+            $category->auto_hidden = false; // the user decided; stop managing it automatically
         }
         $category->save();
 

@@ -28,6 +28,48 @@ export function setToken(token: string | null) {
   }
 }
 
+/*
+ * Slow-request signal. The free server sleeps when idle and takes up to a minute to wake;
+ * while any request has been pending for a few seconds, the UI shows a "waking up" note.
+ */
+const SLOW_AFTER_MS = 3500;
+const TIMEOUT_MS = 90_000;
+let slowCount = 0;
+const slowListeners = new Set<(slow: boolean) => void>();
+
+export function onSlowChange(fn: (slow: boolean) => void): () => void {
+  slowListeners.add(fn);
+  fn(slowCount > 0);
+  return () => slowListeners.delete(fn);
+}
+
+function setSlow(delta: number) {
+  const was = slowCount > 0;
+  slowCount = Math.max(0, slowCount + delta);
+  if (was !== slowCount > 0) slowListeners.forEach((fn) => fn(slowCount > 0));
+}
+
+/** fetch with a hard timeout and slow-request tracking. */
+async function trackedFetch(url: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  let slow = false;
+  const slowTimer = setTimeout(() => {
+    slow = true;
+    setSlow(1);
+  }, SLOW_AFTER_MS);
+  const killTimer = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (e) {
+    if (controller.signal.aborted) throw new ApiError("The server took too long to answer. Try again in a moment.", 0);
+    throw e;
+  } finally {
+    clearTimeout(slowTimer);
+    clearTimeout(killTimer);
+    if (slow) setSlow(-1);
+  }
+}
+
 type Query = Record<string, string | number | boolean | null | undefined>;
 
 export function withQuery(path: string, query?: Query): string {
@@ -45,7 +87,7 @@ export async function api<T = unknown>(path: string, init: { method?: string; bo
   const token = getToken();
   let res: Response;
   try {
-    res = await fetch(BASE + path, {
+    res = await trackedFetch(BASE + path, {
       method: init.method ?? "GET",
       headers: {
         Accept: "application/json",
@@ -54,7 +96,8 @@ export async function api<T = unknown>(path: string, init: { method?: string; bo
       },
       body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
     });
-  } catch {
+  } catch (e) {
+    if (e instanceof ApiError) throw e;
     throw new ApiError("Can't reach the server. Check your connection and try again.", 0);
   }
 
@@ -78,8 +121,9 @@ export async function apiDownload(path: string, fallbackName: string): Promise<v
   const token = getToken();
   let res: Response;
   try {
-    res = await fetch(BASE + path, { headers: { Accept: "text/csv", ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
-  } catch {
+    res = await trackedFetch(BASE + path, { headers: { Accept: "text/csv", ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
+  } catch (e) {
+    if (e instanceof ApiError) throw e;
     throw new ApiError("Can't reach the server. Check your connection and try again.", 0);
   }
   if (!res.ok) throw new ApiError(`Export failed (${res.status})`, res.status);

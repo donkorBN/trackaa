@@ -8,6 +8,11 @@ import type { Account, BudgetsResponse, Business, Category, Goal, Insights, Over
 
 type List<T> = { data: T[] };
 
+/** Public server settings for the sign-in screens. */
+export function useMeta() {
+  return useSWR<{ mail_enabled: boolean; invite_required: boolean }>("/meta", fetcher, { revalidateOnFocus: false });
+}
+
 export function useMe() {
   return useSWR<User>("/me", fetcher);
 }
