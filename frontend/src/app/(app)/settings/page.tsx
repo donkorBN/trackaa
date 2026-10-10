@@ -36,12 +36,24 @@ export default function SettingsPage() {
     <div className="space-y-8">
       <PageHeader eyebrow="Your account" title="Settings" />
       <Profile />
+      <AdminLink />
       <Accounts />
       <Businesses />
       <Categories />
       <Preferences />
       <Security />
     </div>
+  );
+}
+
+/** Only people listed in ADMIN_EMAILS see this. */
+function AdminLink() {
+  const { data: me } = useMe();
+  if (!me?.is_admin) return null;
+  return (
+    <ListCard>
+      <ListRow href="/admin" leading={<Glyph icon={KeyRound} active />} title="Access codes" meta="Create and track the codes you sell" trailing={Chevron} />
+    </ListCard>
   );
 }
 

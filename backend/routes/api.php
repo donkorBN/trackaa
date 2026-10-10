@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\AccountController;
+use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BudgetController;
 use App\Http\Controllers\Api\BusinessController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\Api\OverviewController;
 use App\Http\Controllers\Api\ProgressController;
 use App\Http\Controllers\Api\StatementController;
 use App\Http\Controllers\Api\TransactionController;
+use App\Http\Middleware\EnsureAdmin;
 use App\Http\Middleware\ExtendTokenLifetime;
 use Illuminate\Support\Facades\Route;
 
@@ -55,4 +57,11 @@ Route::middleware(['auth:sanctum', ExtendTokenLifetime::class])->group(function 
     Route::post('/statements/{statement}/rematch', [StatementController::class, 'rematch']);
     Route::patch('/statements/{statement}/lines/{line}', [StatementController::class, 'updateLine']);
     Route::post('/statements/{statement}/lines/{line}/record', [StatementController::class, 'recordLine']);
+
+    Route::middleware(EnsureAdmin::class)->prefix('admin')->group(function () {
+        Route::get('/stats', [AdminController::class, 'stats']);
+        Route::get('/codes', [AdminController::class, 'codes']);
+        Route::post('/codes', [AdminController::class, 'createCodes'])->middleware('throttle:20,1');
+        Route::patch('/codes/{code}', [AdminController::class, 'updateCode']);
+    });
 });

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\AccessCode;
 use App\Models\User;
 use App\Services\BusinessCategories;
 use App\Services\DefaultSetup;
@@ -16,33 +17,90 @@ class GoLiveTest extends TestCase
 
     private function register(array $extra = [])
     {
-        return $this->postJson('/api/auth/register', [
+        return $this->postJson('/api/auth/register', $extra + [
             'name' => 'Ama', 'email' => 'ama@example.com', 'password' => 'password123', 'password_confirmation' => 'password123',
-        ] + $extra);
+        ]);
     }
 
-    public function test_meta_reports_mail_and_invite_settings(): void
+    public function test_meta_reports_mail_signup_and_buy_settings(): void
     {
-        config(['mail.default' => 'log', 'trackaa.invite_code' => null]);
-        $this->getJson('/api/meta')->assertOk()->assertExactJson(['mail_enabled' => false, 'invite_required' => false]);
+        config(['mail.default' => 'log', 'trackaa.signup' => 'open', 'trackaa.buy_url' => null, 'trackaa.price_label' => null]);
+        $this->getJson('/api/meta')->assertOk()->assertExactJson([
+            'mail_enabled' => false, 'access_code_required' => false, 'buy_url' => null, 'price_label' => null,
+        ]);
 
-        config(['mail.default' => 'smtp', 'trackaa.invite_code' => 'friends-only']);
-        $this->getJson('/api/meta')->assertExactJson(['mail_enabled' => true, 'invite_required' => true]);
+        config(['mail.default' => 'smtp', 'trackaa.signup' => 'code', 'trackaa.buy_url' => 'https://paystack.com/pay/trackaa', 'trackaa.price_label' => 'GH₵ 50, one-time']);
+        $this->getJson('/api/meta')->assertExactJson([
+            'mail_enabled' => true, 'access_code_required' => true,
+            'buy_url' => 'https://paystack.com/pay/trackaa', 'price_label' => 'GH₵ 50, one-time',
+        ]);
     }
 
-    public function test_invite_code_gates_registration_when_set(): void
+    public function test_each_access_code_creates_exactly_one_account(): void
     {
-        config(['trackaa.invite_code' => 'friends-only']);
-        $this->register()->assertUnprocessable()->assertJsonValidationErrors('invite_code');
-        $this->register(['invite_code' => 'wrong'])->assertUnprocessable()->assertJsonValidationErrors('invite_code');
+        config(['trackaa.signup' => 'code']);
+        $code = AccessCode::create(['code' => AccessCode::generate()]);
+        $this->assertMatchesRegularExpression('/^TRK-[2-9A-HJKMNPR-Z]{4}-[2-9A-HJKMNPR-Z]{4}$/', $code->code);
+
+        $this->register()->assertUnprocessable()->assertJsonValidationErrors('access_code');
+        $this->register(['access_code' => 'TRK-AAAA-AAAA'])->assertUnprocessable()->assertJsonValidationErrors('access_code');
         $this->assertDatabaseCount('users', 0);
-        $this->register(['invite_code' => ' friends-only '])->assertCreated();
+
+        // Sloppy typing is fine: lower case, spaces, no dashes.
+        $sloppy = strtolower(str_replace('-', ' ', $code->code));
+        $this->register(['access_code' => $sloppy])->assertCreated();
+        $user = User::firstOrFail();
+        $this->assertSame($user->id, $code->fresh()->redeemed_by);
+        $this->assertNotNull($code->fresh()->redeemed_at);
+
+        // Used codes can't be reused.
+        $this->register(['email' => 'kofi@example.com', 'access_code' => $code->code])
+            ->assertUnprocessable()->assertJsonValidationErrors('access_code');
+
+        // Revoked codes don't work either.
+        $revoked = AccessCode::create(['code' => AccessCode::generate()]);
+        $revoked->forceFill(['revoked_at' => now()])->save();
+        $this->register(['email' => 'kofi@example.com', 'access_code' => $revoked->code])->assertUnprocessable();
+        $this->assertDatabaseCount('users', 1);
     }
 
-    public function test_registration_is_open_without_a_code(): void
+    public function test_open_signup_needs_no_code(): void
     {
-        config(['trackaa.invite_code' => null]);
+        config(['trackaa.signup' => 'open']);
         $this->register()->assertCreated();
+    }
+
+    public function test_only_admins_can_manage_codes(): void
+    {
+        config(['trackaa.admin_emails' => ['boss@example.com']]);
+        $boss = User::factory()->create(['email' => 'boss@example.com']);
+        $someone = User::factory()->create();
+
+        Sanctum::actingAs($someone);
+        $this->getJson('/api/admin/codes')->assertNotFound();
+        $this->postJson('/api/admin/codes', ['count' => 5])->assertNotFound();
+        $this->getJson('/api/me')->assertJsonPath('is_admin', false);
+
+        Sanctum::actingAs($boss);
+        $this->getJson('/api/me')->assertJsonPath('is_admin', true);
+        $made = $this->postJson('/api/admin/codes', ['count' => 3, 'note' => 'Ad test batch'])->assertCreated()->json('data');
+        $this->assertCount(3, $made);
+        $this->assertCount(3, array_unique(array_column($made, 'code')));
+        $this->postJson('/api/admin/codes', ['count' => 500])->assertUnprocessable();
+
+        $this->patchJson("/api/admin/codes/{$made[0]['id']}", ['revoked' => true, 'note' => 'Refunded'])
+            ->assertOk()->assertJsonPath('status', 'revoked')->assertJsonPath('note', 'Refunded');
+        $this->getJson('/api/admin/codes?status=available')->assertJsonCount(2, 'data');
+        $this->getJson('/api/admin/codes?q=refund')->assertJsonCount(1, 'data');
+        $this->getJson('/api/admin/stats')->assertJsonPath('codes_available', 2)->assertJsonPath('codes_revoked', 1)->assertJsonPath('users', 2);
+
+        // A redeemed code can't be revoked afterwards.
+        config(['trackaa.signup' => 'code']);
+        auth()->forgetGuards();
+        $this->register(['access_code' => $made[1]['code']])->assertCreated();
+        Sanctum::actingAs($boss);
+        $this->getJson('/api/admin/codes?status=redeemed')->assertJsonCount(1, 'data')->assertJsonPath('data.0.redeemed_by.email', 'ama@example.com');
+        $this->patchJson("/api/admin/codes/{$made[1]['id']}", ['revoked' => true])->assertUnprocessable();
     }
 
     public function test_business_categories_hide_until_a_business_exists_and_respect_user_choices(): void

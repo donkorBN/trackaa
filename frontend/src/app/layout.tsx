@@ -5,7 +5,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Trackaa",
-  description: "Track every cedi you earn and spend.",
+  description: "Know where every cedi goes. Log spending in seconds and check it against your MoMo statement.",
   applicationName: "Trackaa",
   appleWebApp: { capable: true, title: "Trackaa", statusBarStyle: "default" },
   icons: { icon: "/icon-192.png", apple: "/apple-touch-icon.png" },
@@ -16,7 +16,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  themeColor: "#f4f5f7",
+  themeColor: "#f6f5f0",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

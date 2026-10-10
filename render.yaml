@@ -30,8 +30,16 @@ services:
         value: stderr
       - key: LOG_LEVEL
         value: warning
-      # Invite-only sign-up: set a code in the dashboard and share it with friends. Leave empty for open sign-up.
-      - key: INVITE_CODE
+      # Sign-up needs a single-use access code ("code", the default) or is open to anyone ("open").
+      - key: SIGNUP_MODE
+        value: code
+      # Your email(s), comma-separated: these accounts get the Access codes admin screen.
+      - key: ADMIN_EMAILS
+        sync: false
+      # Where people buy a code (e.g. a Paystack payment page link) and the price shown next to it.
+      - key: BUY_URL
+        sync: false
+      - key: PRICE_LABEL
         sync: false
       # Password-reset emails. Until SMTP is set up (Resend/Brevo are free), "Forgot password"
       # says so instead of pretending to send. Set MAIL_MAILER=smtp plus the MAIL_* values.

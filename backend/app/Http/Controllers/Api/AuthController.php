@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Middleware\ExtendTokenLifetime;
+use App\Models\AccessCode;
 use App\Models\User;
 use App\Services\BusinessCategories;
 use App\Services\DefaultSetup;
@@ -17,12 +18,14 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    /** Public facts the sign-in screens need: is email set up, is an invite code required. */
+    /** Public facts the landing and sign-in screens need. */
     public function meta(): JsonResponse
     {
         return response()->json([
             'mail_enabled' => ! in_array(config('mail.default'), ['log', 'array'], true),
-            'invite_required' => filled(config('trackaa.invite_code')),
+            'access_code_required' => config('trackaa.signup') !== 'open',
+            'buy_url' => config('trackaa.buy_url'),
+            'price_label' => config('trackaa.price_label'),
         ]);
     }
 
@@ -33,22 +36,36 @@ class AuthController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'confirmed', PasswordRule::min(8)],
             'timezone' => ['nullable', 'timezone:all'],
-            'invite_code' => ['nullable', 'string', 'max:100'],
+            'access_code' => ['nullable', 'string', 'max:40'],
         ]);
+        $needsCode = config('trackaa.signup') !== 'open';
 
-        $code = (string) config('trackaa.invite_code');
-        if ($code !== '' && ! hash_equals($code, trim((string) ($data['invite_code'] ?? '')))) {
-            throw ValidationException::withMessages(['invite_code' => 'That invite code isn\'t right. Ask the person who invited you.']);
-        }
+        $user = DB::transaction(function () use ($data, $needsCode, $setup, $businessCategories) {
+            $code = null;
+            if ($needsCode) {
+                // Locked so two people can't redeem the same code at the same moment.
+                $code = AccessCode::where('code', AccessCode::normalize((string) ($data['access_code'] ?? '')))
+                    ->whereNull('redeemed_at')->whereNull('revoked_at')
+                    ->lockForUpdate()->first();
+                if (! $code) {
+                    throw ValidationException::withMessages([
+                        'access_code' => 'That access code isn\'t valid or has already been used.',
+                    ]);
+                }
+            }
 
-        $user = User::create([
-            'name' => $data['name'],
-            'email' => strtolower($data['email']),
-            'password' => $data['password'],
-            'timezone' => $data['timezone'] ?? 'Africa/Accra',
-        ]);
-        $setup->provision($user);
-        $businessCategories->sync($user); // no businesses yet: business categories start hidden
+            $user = User::create([
+                'name' => $data['name'],
+                'email' => strtolower($data['email']),
+                'password' => $data['password'],
+                'timezone' => $data['timezone'] ?? 'Africa/Accra',
+            ]);
+            $setup->provision($user);
+            $businessCategories->sync($user); // no businesses yet: business categories start hidden
+            $code?->forceFill(['redeemed_by' => $user->id, 'redeemed_at' => now()])->save();
+
+            return $user;
+        });
 
         return response()->json(['token' => $this->issueToken($user), 'user' => $user->toApi()], 201);
     }

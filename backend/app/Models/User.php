@@ -75,6 +75,12 @@ class User extends Authenticatable
             'email' => $this->email,
             'timezone' => $this->timezone,
             'last_reviewed_on' => $this->last_reviewed_on?->toDateString(),
+            'is_admin' => $this->isAdmin(),
         ];
+    }
+
+    public function isAdmin(): bool
+    {
+        return in_array(strtolower($this->email), config('trackaa.admin_emails', []), true);
     }
 }

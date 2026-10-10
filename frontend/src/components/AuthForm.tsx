@@ -57,7 +57,7 @@ export function firstError(err: unknown) {
 
 export function AuthForm({ mode }: { mode: "login" | "register" }) {
   const router = useRouter();
-  const [form, setForm] = useState({ name: "", email: "", password: "", invite_code: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", access_code: "" });
   const { data: meta } = useMeta();
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -65,6 +65,9 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
 
   useEffect(() => {
     if (getToken()) router.replace("/");
+    // Links sent to buyers look like /register/?code=TRK-XXXX-XXXX
+    const code = new URLSearchParams(location.search).get("code");
+    if (code) setForm((f) => ({ ...f, access_code: code }));
   }, [router]);
 
   async function submit(e: React.FormEvent) {
@@ -76,7 +79,7 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       const body =
         mode === "login"
           ? { email: form.email, password: form.password }
-          : { ...form, invite_code: form.invite_code || undefined, password_confirmation: form.password, timezone: deviceTimezone() };
+          : { ...form, access_code: form.access_code || undefined, password_confirmation: form.password, timezone: deviceTimezone() };
       const res = await api<{ token: string; user: User }>(`/auth/${mode}`, { method: "POST", body });
       setToken(res.token);
       router.replace(mode === "register" ? "/welcome/" : "/");
@@ -104,9 +107,35 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
       }
     >
       <form onSubmit={submit} className="space-y-4">
-        {!login && meta?.invite_required && (
-          <Field label="Invite code" htmlFor="invite_code" hint="Trackaa is invite-only. Ask the person who shared it with you.">
-            <Input id="invite_code" required autoComplete="off" autoCapitalize="off" value={form.invite_code} onChange={set("invite_code")} />
+        {!login && meta?.access_code_required && (
+          <Field
+            label="Access code"
+            htmlFor="access_code"
+            hint={
+              meta.buy_url ? (
+                <>
+                  Don&apos;t have one?{" "}
+                  <a href={meta.buy_url} target="_blank" rel="noopener noreferrer" className={authLinkClass}>
+                    Get an access code
+                  </a>
+                  {meta.price_label ? ` · ${meta.price_label}` : ""}
+                </>
+              ) : (
+                "You'll find it in the message you got after buying Trackaa."
+              )
+            }
+          >
+            <Input
+              id="access_code"
+              required
+              autoComplete="off"
+              autoCapitalize="characters"
+              spellCheck={false}
+              placeholder="TRK-XXXX-XXXX"
+              className="tabular w-full tracking-wider uppercase"
+              value={form.access_code}
+              onChange={set("access_code")}
+            />
           </Field>
         )}
         {!login && (

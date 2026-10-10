@@ -4,13 +4,13 @@ import useSWR, { useSWRConfig } from "swr";
 import { useCallback, useEffect } from "react";
 import { fetcher, withQuery } from "./api";
 import { deviceTimezone } from "./dates";
-import type { Account, BudgetsResponse, Business, Category, Goal, Insights, Overview, Progress, User } from "./types";
+import type { Account, BudgetsResponse, Business, Category, Goal, Insights, Meta, Overview, Progress, User } from "./types";
 
 type List<T> = { data: T[] };
 
 /** Public server settings for the sign-in screens. */
 export function useMeta() {
-  return useSWR<{ mail_enabled: boolean; invite_required: boolean }>("/meta", fetcher, { revalidateOnFocus: false });
+  return useSWR<Meta>("/meta", fetcher, { revalidateOnFocus: false });
 }
 
 export function useMe() {

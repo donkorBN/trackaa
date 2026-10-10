@@ -8,6 +8,34 @@ export interface User {
   email: string;
   timezone: string;
   last_reviewed_on: string | null; // Y-m-d
+  is_admin: boolean;
+}
+
+/** Public server settings (GET /meta). */
+export interface Meta {
+  mail_enabled: boolean;
+  access_code_required: boolean;
+  buy_url: string | null;
+  price_label: string | null;
+}
+
+export interface AccessCode {
+  id: number;
+  code: string;
+  note: string | null;
+  status: "available" | "redeemed" | "revoked";
+  created_at: string;
+  redeemed_at: string | null;
+  redeemed_by: { name: string; email: string } | null;
+}
+
+export interface AdminStats {
+  users: number;
+  users_last_7_days: number;
+  codes_available: number;
+  codes_redeemed: number;
+  codes_revoked: number;
+  active_last_7_days: number;
 }
 
 export interface Account {

@@ -56,7 +56,10 @@ Open http://localhost:3000, create an account, and tap **+**.
 | `APP_KEY` | Laravel key (`php artisan key:generate`) |
 | `APP_URL` | Public URL of the API |
 | `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` | Database (`sqlite`, `mysql` or `pgsql`) |
-| `INVITE_CODE` | *Optional.* When set, sign-up asks for this code, so only people you share it with can create accounts |
+| `SIGNUP_MODE` | `code` (default): every new account needs a single-use access code. `open`: anyone can sign up |
+| `ADMIN_EMAILS` | Comma-separated emails that get the **Access codes** admin screen |
+| `BUY_URL` | *Optional.* Where people buy a code (e.g. a Paystack payment page). Shown on the landing page and sign-up form |
+| `PRICE_LABEL` | *Optional.* Shown next to the buy button, e.g. `GH₵ 50, one-time` (quote it in a `.env` file) |
 | `FRONTEND_URL` | Frontend origin(s) allowed by CORS, comma-separated, e.g. `https://trackaa.vercel.app` |
 | `MAIL_MAILER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_ADDRESS` | Sends password-reset emails. Any SMTP provider works (Resend, Mailgun, Brevo, Gmail SMTP). Locally `MAIL_MAILER=log` writes the email to `storage/logs/laravel.log` |
 
@@ -91,7 +94,12 @@ Every start runs database migrations automatically. Every push to `main` redeplo
 
 **Deploy only when tests pass:** the repo has a GitHub Actions workflow (`.github/workflows/ci.yml`) that runs the backend tests on SQLite and PostgreSQL plus the frontend lint, typecheck, parser tests and build. In Render → your service → **Settings → Build & Deploy → Auto-Deploy**, choose **After CI Checks Pass**.
 
-**Keep it private:** in Render → **Environment**, add `INVITE_CODE` with a word you'll share with friends. Sign-up then asks for it. Existing accounts are unaffected.
+**Selling access:** sign-up needs a single-use access code (`SIGNUP_MODE=code`, the default). In Render → **Environment**:
+1. Set `ADMIN_EMAILS` to your own login email. You'll get **Access codes** in Settings (and the desktop sidebar).
+2. Set `BUY_URL` to where people pay (a Paystack payment page works with MoMo and cards) and `PRICE_LABEL` to the price.
+3. In **Access codes**, create a batch. After each payment, send the buyer one code, or the **Link** button's sign-up link, which fills the code in for them.
+
+Visitors who aren't logged in land on `/start`, a landing page made for ad traffic. Existing accounts are unaffected.
 
 Free Render services sleep after 15 minutes without visits. The first visit after that takes about a minute while the app wakes up; after that it's fast. That's fine for personal use, so there's no need to keep it awake (a pinger would also keep Neon awake and use up its free compute). Once the app has been opened on a phone, it opens instantly from its offline copy and shows *Waking up the server…* while the API starts; anything saved meanwhile is kept and synced.
 
@@ -119,7 +127,7 @@ To host the website separately (e.g. on Vercel), build `frontend` with `NEXT_PUB
 ## Testing
 
 ```bash
-cd backend && php artisan test      # 35 feature tests
+cd backend && php artisan test      # 36 feature tests
 cd frontend && npm test && npm run lint && npx tsc --noEmit && npm run build
 ```
 
@@ -137,7 +145,7 @@ The backend tests cover:
 - **one user cannot read, edit or delete another user's data, or attach records to another user's accounts or categories**
 - the password flows: forgot, reset (which signs out other devices) and change
 - login sessions that expire after 90 days without use and extend themselves with use
-- invite-only sign-up, account deletion (password required, everything removed, nobody else affected)
+- access codes (single use, revoked codes rejected, sloppy typing accepted, admin-only management), account deletion (password required, everything removed, nobody else affected)
 - business categories hidden for personal-only users and restored when a business is added, never touching ones the user archived or used
 - the server-side end-of-day review
 - the CSV export
@@ -235,7 +243,7 @@ All endpoints need a bearer token except the two auth routes.
 
 ```
 POST   /api/auth/register  /api/auth/login  /api/auth/logout
-GET    /api/meta          (public: mail_enabled, invite_required)
+GET    /api/meta          (public: mail_enabled, access_code_required, buy_url, price_label)
 GET    /api/me            PATCH /api/me              (name, timezone)    DELETE /api/me  { password }
 GET    /api/overview      ?scope=&business_id=&period=today|week|month|custom&from=&to=&tz=
 GET    /api/transactions  ?q=&type=&scope=&business_id=&category_id=&account_id=&from=&to=&page=
@@ -243,6 +251,7 @@ POST   /api/transactions  PATCH/DELETE /api/transactions/{id}
 GET|POST /api/accounts | /api/businesses | /api/categories   PATCH|DELETE /{id} (rename, archived: true|false; delete only if unused)
 GET    /api/progress      streak, week, level, badges
 POST   /api/review        { date }  check in (today or yesterday)
+GET    /api/admin/stats   GET|POST /api/admin/codes   PATCH /api/admin/codes/{id}   (admins only; 404 for everyone else)
 ```
 
 ---
