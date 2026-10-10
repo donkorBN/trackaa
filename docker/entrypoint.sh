@@ -10,6 +10,16 @@ case "$APP_KEY" in
   *) export APP_KEY="base64:$APP_KEY" ;;
 esac
 
+# Neon's pooled hostnames (ep-xxx-pooler.region...) break Laravel's transactional migrations and
+# prepared statements. The direct endpoint is the same hostname without "-pooler", so use that.
+case "$DB_URL" in
+  *-pooler.*)
+    DB_URL="$(printf '%s' "$DB_URL" | sed 's/-pooler\././')"
+    export DB_URL
+    echo "DB_URL points at Neon's connection pooler; using the direct endpoint instead." >&2
+    ;;
+esac
+
 # Render tells the service its public URL; use it unless set explicitly.
 export APP_URL="${APP_URL:-${RENDER_EXTERNAL_URL:-http://localhost:${PORT:-10000}}}"
 export FRONTEND_URL="${FRONTEND_URL:-$APP_URL}"
