@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\ForceJson;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -16,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Hosting platforms (Railway, Render, Fly, Laravel Cloud...) put the app behind a proxy.
         // Trust its X-Forwarded-* headers so rate limits see the real client IP and URLs use https.
         $middleware->trustProxies(at: env('TRUSTED_PROXIES', '*'));
+        $middleware->prependToGroup('api', ForceJson::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

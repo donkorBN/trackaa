@@ -58,7 +58,8 @@ Open http://localhost:3000, create an account, and tap **+**.
 | `DB_CONNECTION`, `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD` | Database (`sqlite`, `mysql` or `pgsql`) |
 | `FRONTEND_URL` | Frontend origin(s) allowed by CORS, comma-separated, e.g. `https://trackaa.vercel.app` |
 | `MAIL_MAILER`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_ADDRESS` | Sends password-reset emails. Any SMTP provider works (Resend, Mailgun, Brevo, Gmail SMTP). Locally `MAIL_MAILER=log` writes the email to `storage/logs/laravel.log` |
-| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | *Optional.* Push-reminder keys. If unset, a key pair is generated automatically and kept in `storage/app/private/vapid.json`. Set them explicitly (`php artisan webpush:vapid`) on hosts with a temporary filesystem |
+| `CRON_SECRET` | Enables `/api/cron/reminders?token=…`, for hosts without a scheduler (Render free plan) |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | *Optional.* Push-reminder keys. If unset, a key pair is generated automatically and stored in the database |
 
 ### frontend/.env.local
 
@@ -70,36 +71,63 @@ No secrets live in the frontend. The only browser-side value is the public API U
 
 ---
 
-## Deploying
+## Deploying on Render (recommended)
 
-**Frontend → Vercel.** Import the repo, set **Root Directory** to `frontend`, add `NEXT_PUBLIC_API_URL`, and deploy.
+The repo is ready for Render: one **free web service** runs the website and the API together (`Dockerfile` + `render.yaml`). You need two other free accounts: a database (Neon) and a pinger (cron-job.org).
 
-**API → any PHP host** (Laravel Cloud, Forge, Railway, Render, a VPS). Set the root to `backend` and use MySQL or Postgres. Then:
+### 1. Create the database (Neon, free, never expires)
+Render's own free Postgres is deleted after 30 days, so use Neon (or a *paid* Render Postgres).
+1. Sign up at neon.tech → **New project** (pick a region near your Render region, e.g. Frankfurt).
+2. On the dashboard, open **Connect**, turn **off** "Connection pooling", and copy the connection string. It looks like `postgresql://user:pass@ep-xxx.eu-central-1.aws.neon.tech/neondb?sslmode=require`.
 
-```bash
-composer install --no-dev --optimize-autoloader
-php artisan migrate --force
-php artisan config:cache && php artisan route:cache
+*(Paid Render Postgres instead: create it in the same region, then copy its **Internal Database URL**.)*
+
+### 2. Deploy the Blueprint
+1. Push this code to your GitHub `main` branch.
+2. Render dashboard → **New** → **Blueprint** → connect the `trackaa` repo → it reads `render.yaml`.
+3. When asked for **`DB_URL`**, paste the connection string from step 1. `APP_KEY` and `CRON_SECRET` are generated for you.
+4. **Apply**. The first build takes about 5–10 minutes. When it says *Live*, open `https://<your-service>.onrender.com`, create your account, and record a transaction.
+
+Every start runs database migrations automatically. Every push to `main` redeploys.
+
+### 3. Keep it awake and send reminders (cron-job.org, free)
+Free Render services sleep after 15 minutes without traffic, which means a slow first load and no reminders. One free pinger fixes both:
+1. In Render → your service → **Environment**, copy the value of `CRON_SECRET`.
+2. At cron-job.org → **Create cronjob**:
+   - URL: `https://<your-service>.onrender.com/api/cron/reminders?token=<CRON_SECRET>`
+   - Schedule: every **5 minutes**
+   - Save.
+
+Each call sends any daily reminders that are due (so a reminder may arrive up to 5 minutes late) and keeps the app awake. One always-on service fits inside Render's 750 free hours a month.
+
+### 4. Password-reset emails (optional but recommended)
+In Render → **Environment**, add your email provider's SMTP details, then **Save** (it redeploys). Resend and Brevo both have free tiers.
+
+```
+MAIL_MAILER=smtp
+MAIL_HOST=...        MAIL_PORT=587
+MAIL_USERNAME=...    MAIL_PASSWORD=...
+MAIL_FROM_ADDRESS=you@yourdomain.com
 ```
 
-Set `APP_ENV=production`, `APP_DEBUG=false`, and `FRONTEND_URL` to your Vercel URL.
+### 5. On your phone
+- Open the site and add it to your Home Screen. On iPhone: Share → *Add to Home Screen*.
+- In Settings, turn on **Phone notifications**.
 
-**Daily push reminders** need the Laravel scheduler running every minute:
+Push keys are created automatically and stored in the database. Set `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` only if you want to manage them yourself.
 
-```
-* * * * * cd /path/to/backend && php artisan schedule:run >> /dev/null 2>&1
-```
+### Custom domain (optional)
+Render → service → **Settings → Custom Domains**. After adding one, set `APP_URL=https://yourdomain.com` in Environment.
 
-(Laravel Cloud and Forge have a toggle for this.) Without the scheduler, you still get the in-app reminder banner.
+### Other hosts
+The same `Dockerfile` runs on any Docker host (Fly.io, Railway, a VPS). Set `APP_KEY`, `DB_CONNECTION=pgsql`, `DB_URL`, `APP_URL`, `APP_ENV=production` and `APP_DEBUG=false`. For reminders, either call `/api/cron/reminders?token=…` on a schedule, or run `php artisan schedule:run` every minute.
 
-**Password reset emails** need the `MAIL_*` variables set. There is no email verification, by design.
-
----
+To host the website separately (e.g. on Vercel), build `frontend` with `NEXT_PUBLIC_API_URL=https://<api>/api` (output is static files in `frontend/out`) and set `FRONTEND_URL` on the API to the website's address.
 
 ## Testing
 
 ```bash
-cd backend && php artisan test      # 26 feature tests
+cd backend && php artisan test      # 28 feature tests
 cd frontend && npm test && npm run lint && npx tsc --noEmit && npm run build
 ```
 
@@ -217,7 +245,7 @@ GET    /api/push/key      POST|DELETE /api/push/subscribe
 
 ## Known limitations
 
-- **Push reminders need the scheduler cron** on the API host. On iPhone, Web Push also requires adding the app to the Home Screen (iOS 16.4+). Otherwise you get the in-app banner after your reminder time.
+- **Push reminders need something to trigger them**: the cron-job.org pinger on Render, or the Laravel scheduler elsewhere. On iPhone, Web Push also requires adding the app to the Home Screen (iOS 16.4+). Otherwise you get the in-app banner after your reminder time.
 - **Password-reset emails need an SMTP provider** configured (`MAIL_*`).
 - **Login tokens are kept in `localStorage`.** They expire after 90 days of not being used. Fine for a personal tool; for extra hardening, switch to cookie-based Sanctum SPA auth.
 - **Offline**: new transactions are queued while offline. Editing or deleting an existing transaction still needs a connection.

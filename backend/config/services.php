@@ -42,4 +42,9 @@ return [
         'subject' => env('VAPID_SUBJECT', 'mailto:admin@example.com'),
     ],
 
+    // Shared secret for /api/cron/reminders (external pinger). Empty = endpoint disabled.
+    'cron' => [
+        'secret' => env('CRON_SECRET'),
+    ],
+
 ];

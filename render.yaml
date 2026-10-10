@@ -1,0 +1,34 @@
+# Render Blueprint: New > Blueprint > pick this repo.
+# One free web service runs the website and the API together (see Dockerfile).
+# The database is NOT created here on purpose: Render's free Postgres is deleted after
+# 30 days. Paste a connection string from Neon (free) or a paid Render Postgres into DB_URL.
+services:
+  - type: web
+    name: trackaa
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /up
+    autoDeploy: true
+    envVars:
+      - key: APP_KEY
+        generateValue: true
+      - key: CRON_SECRET
+        generateValue: true
+      - key: DB_URL
+        sync: false
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_NAME
+        value: Trackaa
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: LOG_LEVEL
+        value: warning
+      - key: MAIL_MAILER
+        value: log

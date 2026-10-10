@@ -97,7 +97,7 @@ export default function ImportStatementPage() {
         },
       });
       refreshAll();
-      router.push(`/reconcile/${res.id}`);
+      router.push(`/reconcile/view/?id=${res.id}`);
     } catch (e) {
       const err = e as ApiError;
       setError(Object.values(err.fields ?? {})[0]?.[0] ?? err.message);

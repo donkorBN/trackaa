@@ -2,16 +2,17 @@
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use Minishlink\WebPush\VAPID;
 
 /**
  * Keys for Web Push. Uses VAPID_* from the environment when set; otherwise
- * generates a pair once and keeps it in storage so push works with zero setup.
+ * generates a pair once and keeps it in the database, so push works with zero
+ * setup even on hosts whose disk is wiped on every deploy (Render, Heroku...).
  */
 class VapidKeys
 {
-    private const FILE = 'vapid.json';
+    private const KEY = 'vapid_keys';
 
     /** @return array{public_key: string, private_key: string, subject: string}|null */
     public function get(): ?array
@@ -24,18 +25,21 @@ class VapidKeys
         }
 
         try {
-            $disk = Storage::disk('local');
-            if (! $disk->exists(self::FILE)) {
+            $stored = DB::table('app_settings')->where('key', self::KEY)->value('value');
+            if (! $stored) {
                 $keys = VAPID::createVapidKeys();
-                $disk->put(self::FILE, json_encode(['public_key' => $keys['publicKey'], 'private_key' => $keys['privateKey']]));
+                $stored = json_encode(['public_key' => $keys['publicKey'], 'private_key' => $keys['privateKey']]);
+                // insertOrIgnore: if two requests race, the first pair wins and both read it back.
+                DB::table('app_settings')->insertOrIgnore(['key' => self::KEY, 'value' => $stored, 'created_at' => now(), 'updated_at' => now()]);
+                $stored = DB::table('app_settings')->where('key', self::KEY)->value('value');
             }
-            $stored = json_decode($disk->get(self::FILE), true);
+            $keys = json_decode($stored, true);
         } catch (\Throwable $e) {
             report($e);
 
             return null;
         }
 
-        return ['public_key' => $stored['public_key'], 'private_key' => $stored['private_key'], 'subject' => $subject];
+        return ['public_key' => $keys['public_key'], 'private_key' => $keys['private_key'], 'subject' => $subject];
     }
 }

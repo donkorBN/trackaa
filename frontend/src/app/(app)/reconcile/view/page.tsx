@@ -2,8 +2,8 @@
 
 import { ArrowLeft, CheckCircle2, EyeOff, Link2, Link2Off, Plus, RefreshCw, RotateCcw, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import useSWR from "swr";
 import { Meter } from "@/components/charts";
 import { useToast } from "@/components/toast";
@@ -19,11 +19,13 @@ import { categoryVisual } from "@/lib/visuals";
 type Tab = "missing" | "app" | "matched" | "ignored";
 
 export default function StatementPage() {
-  const { id } = useParams<{ id: string }>();
+  // Static export: the statement id travels in the query string (/reconcile/view/?id=12).
+  const [id, setId] = useState<string | null>(null);
+  useEffect(() => setId(new URLSearchParams(location.search).get("id")), []);
   const router = useRouter();
   const toast = useToast();
   const refreshAll = useRefreshAll();
-  const key = withQuery(`/statements/${id}`, { tz: deviceTimezone() });
+  const key = id ? withQuery(`/statements/${id}`, { tz: deviceTimezone() }) : null;
   const { data, error, mutate } = useSWR<StatementDetail>(key, fetcher);
   const [tab, setTab] = useState<Tab>("missing");
   const [recording, setRecording] = useState<StatementLineT | null>(null);
@@ -46,7 +48,7 @@ export default function StatementPage() {
     act(`/statements/${id}/lines/${line.id}`, { action, ...extra }, "PATCH");
 
   if (error) return <ErrorBox error={error} onRetry={() => mutate()} />;
-  if (!data) return <Skeleton className="h-96" />;
+  if (!data || !id) return <Skeleton className="h-96" />;
 
   const s = data.summary;
   const missing = data.lines.filter((l) => l.status === "unmatched");

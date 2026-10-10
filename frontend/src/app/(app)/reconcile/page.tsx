@@ -50,7 +50,7 @@ export default function ReconcilePage() {
       ) : (
         <Card flush className="divide-y divide-line overflow-hidden">
           {data.data.map((s) => (
-            <Link key={s.id} href={`/reconcile/${s.id}`} className="block px-4 py-3.5 hover:bg-surface-2">
+            <Link key={s.id} href={`/reconcile/view/?id=${s.id}`} className="block px-4 py-3.5 hover:bg-surface-2">
               <div className="flex items-center gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-[15px] font-medium">

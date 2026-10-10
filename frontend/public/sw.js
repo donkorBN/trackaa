@@ -1,6 +1,6 @@
 // Trackaa service worker: makes the app installable, keeps the shell available
 // offline, and shows the daily reminder push notification.
-const CACHE = "trackaa-v2";
+const CACHE = "trackaa-v3";
 
 self.addEventListener("install", () => self.skipWaiting());
 
@@ -15,7 +15,7 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   const url = new URL(req.url);
-  if (req.method !== "GET" || url.origin !== self.location.origin) return;
+  if (req.method !== "GET" || url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
   event.respondWith(
     fetch(req)
       .then((res) => {

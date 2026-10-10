@@ -24,7 +24,9 @@ class SendDailyReminders extends Command
             return self::SUCCESS;
         }
 
-        $webPush = new WebPush(['VAPID' => [
+        // Without the gmp/bcmath extensions the library only emits a performance notice; don't let
+        // Laravel turn that notice into a fatal error (the Docker image installs gmp anyway).
+        $webPush = @new WebPush(['VAPID' => [
             'subject' => $config['subject'],
             'publicKey' => $config['public_key'],
             'privateKey' => $config['private_key'],

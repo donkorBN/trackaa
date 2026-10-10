@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BudgetController;
 use App\Http\Controllers\Api\BusinessController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\CronController;
 use App\Http\Controllers\Api\GoalController;
 use App\Http\Controllers\Api\InsightsController;
 use App\Http\Controllers\Api\OverviewController;
@@ -20,6 +21,8 @@ Route::middleware('throttle:10,1')->group(function () {
     Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
 });
+
+Route::get('/cron/reminders', [CronController::class, 'reminders'])->middleware('throttle:30,1');
 
 Route::middleware(['auth:sanctum', ExtendTokenLifetime::class])->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);

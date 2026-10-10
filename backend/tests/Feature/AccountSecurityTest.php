@@ -48,7 +48,7 @@ class AccountSecurityTest extends TestCase
         $resetToken = null;
         Notification::assertSentTo($user, ResetPassword::class, function ($n) use (&$resetToken, $user) {
             $resetToken = $n->token;
-            $this->assertStringStartsWith('http://localhost:3000/reset-password?token=', $n->toMail($user)->actionUrl);
+            $this->assertStringStartsWith('http://localhost:3000/reset-password/?token=', $n->toMail($user)->actionUrl);
 
             return true;
         });
@@ -135,5 +135,22 @@ class AccountSecurityTest extends TestCase
         $key = $this->withToken($token)->getJson('/api/push/key')->assertOk()->json('public_key');
         $this->assertNotEmpty($key);
         $this->assertSame($key, $this->withToken($token)->getJson('/api/push/key')->json('public_key'));
+        $this->assertDatabaseCount('app_settings', 1); // stored in the database, so it survives restarts
+    }
+
+    public function test_api_answers_json_even_without_accept_header(): void
+    {
+        $this->get('/api/me')->assertUnauthorized()->assertJsonPath('message', 'Unauthenticated.');
+    }
+
+    public function test_cron_endpoint_requires_the_secret(): void
+    {
+        config(['services.cron.secret' => null]);
+        $this->getJson('/api/cron/reminders')->assertNotFound(); // disabled when no secret is set
+
+        config(['services.cron.secret' => 'shh-123']);
+        $this->getJson('/api/cron/reminders?token=wrong')->assertNotFound();
+        $this->getJson('/api/cron/reminders?token=shh-123')->assertOk()->assertJsonPath('ok', true);
+        $this->withToken('shh-123')->getJson('/api/cron/reminders')->assertOk();
     }
 }
