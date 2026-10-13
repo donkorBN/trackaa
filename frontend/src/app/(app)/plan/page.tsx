@@ -1,7 +1,7 @@
 "use client";
 
 import { CircleAlert, CircleCheck, FileSpreadsheet, Flag, Plus, Target, Trash2, TriangleAlert } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import useSWR from "swr";
 import { ChartCard, LineChart, Meter, meterTone, ToneTag } from "@/components/charts";
 import { MoneyField } from "@/components/MoneyField";
@@ -350,8 +350,18 @@ function Goals() {
   const [open, setOpen] = useState<Goal | null>(null);
   const [adding, setAdding] = useState<Goal | null>(null);
 
+  // Deep link from the Overview: /plan/?goal=new opens the form straight away.
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("goal") === "new") {
+      history.replaceState(null, "", "/plan/#goals");
+      setCreating(true);
+      document.getElementById("goals")?.scrollIntoView();
+    }
+  }, []);
+
   return (
-    <section>
+    <section id="goals" className="scroll-mt-6">
       <SectionTitle
         action={
           <Button variant="secondary" size="sm" onClick={() => setCreating(true)}>
@@ -359,7 +369,7 @@ function Goals() {
           </Button>
         }
       >
-        Goals
+        Savings goals
       </SectionTitle>
       <div className="space-y-3">
         {error && <ErrorBox error={error} onRetry={() => mutate()} />}
@@ -381,7 +391,7 @@ function Goals() {
         )}
       </div>
 
-      <Sheet open={creating} onClose={() => setCreating(false)} title="New goal">
+      <Sheet open={creating} onClose={() => setCreating(false)} title="New savings goal">
         {creating && <GoalForm onDone={() => setCreating(false)} />}
       </Sheet>
       <Sheet open={!!adding} onClose={() => setAdding(null)} title={adding ? `Add to ${adding.name}` : ""}>

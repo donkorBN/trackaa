@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownLeft, ArrowUpRight, Plus, Settings, Target } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Flag, Plus, Settings, Target } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AnimatedMoney } from "@/components/AnimatedMoney";
@@ -23,6 +23,7 @@ import {
   Monogram,
   Num,
   PageHeader,
+  ProgressBar,
   SectionLink,
   SectionTitle,
   Segmented,
@@ -30,7 +31,7 @@ import {
   Stat,
 } from "@/components/ui";
 import { deviceTimezone, greeting, shortDate, ymd } from "@/lib/dates";
-import { useAccounts, useBudgets, useMe, useOverview } from "@/lib/hooks";
+import { useAccounts, useBudgets, useGoals, useMe, useOverview } from "@/lib/hooks";
 import { formatGHS } from "@/lib/money";
 import type { Overview, Period, Totals } from "@/lib/types";
 import { ACCOUNT_ICON, categoryIcon, SHARE_RAMP } from "@/lib/visuals";
@@ -151,6 +152,8 @@ export default function OverviewPage() {
           <TodayCard />
 
           <BudgetCard />
+
+          <SavingsGoals />
 
           {!data.has_transactions && (
             <EmptyState
@@ -378,5 +381,57 @@ function BudgetCard() {
         </div>
       )}
     </Link>
+  );
+}
+
+function SavingsGoals() {
+  const { goals, data } = useGoals();
+  if (!data) return null;
+  const active = goals.filter((g) => !g.archived);
+  if (active.length === 0) {
+    return (
+      <LinkCard href="/plan/?goal=new" tone="dashed">
+        <div className="flex items-center gap-3">
+          <Glyph icon={Flag} size={40} />
+          <span>
+            <span className="block text-[15px] font-bold">Start a savings goal</span>
+            <span className="block text-[13px] text-muted">Emergency fund, rent, a laptop. We’ll tell you what to put aside each week.</span>
+          </span>
+        </div>
+      </LinkCard>
+    );
+  }
+  return (
+    <section>
+      <SectionTitle action={<SectionLink href="/plan/?goal=new">+ New goal</SectionLink>}>Savings goals</SectionTitle>
+      <ListCard>
+        {active.slice(0, 3).map((g) => (
+          <Link key={g.id} href="/plan/#goals" className="block px-4 py-3.5 transition-colors hover:bg-surface-2">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="truncate text-[15px] font-semibold">{g.name}</span>
+              <Num className="shrink-0 text-[15px]">{g.percent}%</Num>
+            </div>
+            <div className="mt-2.5">
+              <ProgressBar value={g.saved} max={g.target_amount} size="sm" label={`${g.name} progress`} />
+            </div>
+            <div className="mt-1.5 flex justify-between gap-2 text-[12.5px] text-muted">
+              <span className="tabular">
+                {formatGHS(g.saved)} of {formatGHS(g.target_amount)}
+              </span>
+              {g.remaining > 0 && g.weekly_needed ? (
+                <span className="tabular">{formatGHS(g.weekly_needed, { compact: true })} a week</span>
+              ) : g.remaining <= 0 ? (
+                <span className="font-semibold text-income">Reached</span>
+              ) : null}
+            </div>
+          </Link>
+        ))}
+      </ListCard>
+      {active.length > 3 && (
+        <div className="mt-2 px-0.5">
+          <SectionLink href="/plan/#goals">See all {active.length} goals</SectionLink>
+        </div>
+      )}
+    </section>
   );
 }
