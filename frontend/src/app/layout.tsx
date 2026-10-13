@@ -15,6 +15,9 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // Locked: focusing a field must never zoom the page (iOS zooms into inputs otherwise).
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: "cover",
   themeColor: "#f6f5f0",
 };

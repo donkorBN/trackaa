@@ -178,6 +178,11 @@ button, a, input, select, textarea, label { touch-action: manipulation; }
 /* iOS: don't inflate text when rotating to landscape. */
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
+/* Never below 16px in a field: iOS Safari zooms into any input with smaller text. */
+@layer base {
+  input, select, textarea { font-size: max(16px, 1em); }
+}
+
 /* In the base layer so utilities like outline-none can override it. */
 @layer base {
   :focus-visible {
