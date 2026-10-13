@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { onSlowChange } from "@/lib/api";
-import { useToast } from "./toast";
 import { Spinner } from "./ui";
 
 /** Shown while the free server wakes up, so a slow first request doesn't look like a broken app. */
@@ -23,18 +22,3 @@ export function ServerWaking() {
   );
 }
 
-/** The service worker serves the cached app instantly; when it finds a newer version, offer a reload. */
-export function UpdateReady() {
-  const toast = useToast();
-  useEffect(() => {
-    if (!("serviceWorker" in navigator)) return;
-    const onMessage = (e: MessageEvent) => {
-      if (e.data?.type === "trackaa:update-ready") {
-        toast({ message: "A new version of Trackaa is ready.", action: { label: "Reload", onClick: () => location.reload() } });
-      }
-    };
-    navigator.serviceWorker.addEventListener("message", onMessage);
-    return () => navigator.serviceWorker.removeEventListener("message", onMessage);
-  }, [toast]);
-  return null;
-}

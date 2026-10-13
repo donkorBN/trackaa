@@ -1,6 +1,8 @@
-// Trackaa service worker: makes the app installable and opens it instantly, even while
-// the free server is asleep. API calls are never cached, so numbers are always fresh.
-const CACHE = "trackaa-v5";
+// Trackaa service worker: makes the app installable and keeps it opening when the free
+// server is asleep or the phone is offline. API calls are never cached.
+const CACHE = "trackaa-v6";
+// How long a page request may take before we fall back to the saved copy.
+const PAGE_TIMEOUT_MS = 4000;
 
 self.addEventListener("install", () => self.skipWaiting());
 
@@ -10,52 +12,33 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-async function fromNetwork(req) {
-  const res = await fetch(req);
-  if (res.ok) {
+async function save(req, res) {
+  if (res && res.ok) {
     const cache = await caches.open(CACHE);
     await cache.put(req, res.clone());
   }
   return res;
 }
 
-async function cacheFirst(req) {
-  return (await caches.match(req)) || fromNetwork(req);
-}
-
-/** Serve the cached page now; refresh it in the background and tell the app if a new version arrived. */
-async function staleWhileRevalidate(event) {
+/**
+ * Pages: always try the network first so a new deploy shows up straight away.
+ * Only if the server is slow (asleep) or unreachable do we answer from the saved copy;
+ * the network answer still refreshes the cache when it arrives.
+ */
+async function networkFirst(event) {
   const req = event.request;
-  const isPage = req.mode === "navigate";
-  const hit = await caches.match(req, { ignoreSearch: isPage });
-
-  const refresh = fetch(req)
-    .then(async (res) => {
-      if (!res.ok) return res;
-      if (hit && isPage) {
-        const [oldText, newText] = await Promise.all([hit.clone().text(), res.clone().text()]);
-        if (oldText !== newText) {
-          const clients = await self.clients.matchAll({ type: "window" });
-          clients.forEach((c) => c.postMessage({ type: "trackaa:update-ready" }));
-        }
-      }
-      const cache = await caches.open(CACHE);
-      await cache.put(req, res.clone());
-      return res;
-    })
-    .catch(() => undefined);
-
-  if (hit) {
-    event.waitUntil(refresh);
-    return hit;
+  const network = fetch(req).then((res) => save(req, res));
+  const timeout = new Promise((resolve) => setTimeout(resolve, PAGE_TIMEOUT_MS, "timeout"));
+  try {
+    const first = await Promise.race([network, timeout]);
+    if (first !== "timeout") return first;
+  } catch {
+    /* offline: fall through to the cache */
   }
-  const res = await refresh;
-  if (res) return res;
-  if (isPage) {
-    const shell = await caches.match("/");
-    if (shell) return shell;
-  }
-  return Response.error();
+  event.waitUntil(network.catch(() => undefined));
+  const hit = (await caches.match(req, { ignoreSearch: true })) || (await caches.match("/"));
+  if (hit) return hit;
+  return network; // nothing saved yet: keep waiting for the server
 }
 
 self.addEventListener("fetch", (event) => {
@@ -63,10 +46,15 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   if (req.method !== "GET" || url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
 
-  // Hashed build files never change.
+  // Hashed build files never change: cache first.
   if (url.pathname.startsWith("/_next/static/")) {
-    event.respondWith(cacheFirst(req).catch(() => Response.error()));
+    event.respondWith(caches.match(req).then((hit) => hit || fetch(req).then((res) => save(req, res))));
     return;
   }
-  event.respondWith(staleWhileRevalidate(event));
+  if (req.mode === "navigate") {
+    event.respondWith(networkFirst(event));
+    return;
+  }
+  // Icons, manifest and other files: network, falling back to the saved copy.
+  event.respondWith(fetch(req).then((res) => save(req, res)).catch(() => caches.match(req).then((hit) => hit || Response.error())));
 });
