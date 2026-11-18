@@ -1,12 +1,12 @@
 "use client";
 
-import { ChartColumn, CircleCheckBig, CloudOff, FileSpreadsheet, House, KeyRound, List, Plus, Settings, Target } from "lucide-react";
+import { ChartColumn, CircleCheckBig, CloudOff, FileSpreadsheet, House, List, Plus, Settings, Target } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { getToken } from "@/lib/api";
-import { useMe, useRefreshAll } from "@/lib/hooks";
+import { useRefreshAll } from "@/lib/hooks";
 import { flushOutbox, useOutboxCount } from "@/lib/offline";
 import { BadgeCelebrations } from "./progress";
 import { QuickAddProvider, useQuickAdd } from "./quick-add";
@@ -83,8 +83,6 @@ function Frame({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { openQuickAdd } = useQuickAdd();
   const pending = useOutboxCount();
-  const { data: me } = useMe();
-  const sidebar = me?.is_admin ? [...SIDEBAR, { href: "/admin", label: "Access codes", icon: KeyRound }] : SIDEBAR;
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href) || (href === "/plan" && pathname.startsWith("/reconcile"));
 
@@ -117,7 +115,7 @@ function Frame({ children }: { children: ReactNode }) {
           <Plus size={18} strokeWidth={2.75} /> New transaction
         </button>
         <nav className="space-y-1">
-          {sidebar.map(({ href, label, icon: Icon }) => (
+          {SIDEBAR.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}

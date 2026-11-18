@@ -5,7 +5,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { buttonClass, cx, Wordmark } from "@/components/ui";
-import { useMeta } from "@/lib/hooks";
 
 /*
  * Long-form sales letter for ad traffic. It reads like a letter, not a website:
@@ -18,9 +17,6 @@ import { useMeta } from "@/lib/hooks";
 const SIGNATURE = { name: "", role: "Founder, Trackaa" };
 
 export function Landing() {
-  const { data: meta } = useMeta();
-  const buy = meta?.buy_url ?? null;
-  const price = meta?.price_label ?? null;
   const [showBar, setShowBar] = useState(false);
 
   useEffect(() => {
@@ -161,7 +157,7 @@ export function Landing() {
           ]}
         />
 
-        <CtaBlock buy={buy} price={price} />
+        <CtaBlock />
 
         <H2>Here’s everything you get</H2>
         <Bullets
@@ -178,24 +174,7 @@ export function Landing() {
           ]}
         />
 
-        <H2>What it costs</H2>
-        <P>
-          <B>You’ve already been paying for not tracking.</B> You just haven’t seen the bill.
-        </P>
-        <P>
-          {price ? (
-            <>
-              Trackaa costs <Mark>{price}</Mark>. That’s probably less than what slipped through your hands last week without you noticing.
-            </>
-          ) : (
-            <>Trackaa probably costs less than what slipped through your hands last week without you noticing.</>
-          )}
-        </P>
-        <P>
-          You get an access code and use it to create your account. That’s it. Create your account, and log your first spend today.
-        </P>
-
-        <CtaBlock buy={buy} price={price} />
+        <CtaBlock />
 
         <H2>This isn’t for everyone</H2>
         <P>
@@ -232,7 +211,7 @@ export function Landing() {
           You can keep saying money doesn’t last in your hands. <B>Or you can find out why, and fix it, starting today.</B>
         </P>
 
-        <CtaBlock buy={buy} price={price} />
+        <CtaBlock />
 
         <P>To keeping what you earn,</P>
         <p className="font-display text-[22px] font-extrabold">{SIGNATURE.name || "Trackaa"}</p>
@@ -241,8 +220,8 @@ export function Landing() {
         <div className="mt-12 border-t border-line pt-8">
           <P>
             <B>P.S.</B> If you skipped down here, here’s the short version: your money isn’t disappearing, it’s leaking out in small spends you can’t
-            see. Trackaa shows you every one of them, in five seconds a day.{price ? ` ${price}.` : ""}{" "}
-            <CtaLink buy={buy}>Get your access code here.</CtaLink>
+            see. Trackaa shows you every one of them, in five seconds a day.{" "}
+            <CtaLink>Create your account here.</CtaLink>
           </P>
           <P>
             <B>P.P.S.</B> Do the two-minute exercise. Open last month’s MoMo history and try to explain every cedi. If you can’t, that’s your answer.
@@ -253,7 +232,7 @@ export function Landing() {
       <footer className="border-t border-line px-5 py-8 text-center text-[13px] text-muted">
         Trackaa · all amounts in Ghana cedis (GH₵) ·{" "}
         <Link href="/register/" className="font-semibold text-ink underline decoration-brand decoration-2 underline-offset-4">
-          I have a code
+          Create an account
         </Link>{" "}
         ·{" "}
         <Link href="/login/" className="font-semibold text-ink underline decoration-brand decoration-2 underline-offset-4">
@@ -261,7 +240,7 @@ export function Landing() {
         </Link>
       </footer>
 
-      {/* Phones: a buy bar follows the reader once the letter gets going. */}
+      {/* Phones: a CTA bar follows the reader once the letter gets going. */}
       <div
         className={cx(
           "fixed inset-x-0 bottom-0 z-40 border-t-[1.5px] border-line bg-surface px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] transition-transform duration-300 md:hidden",
@@ -272,9 +251,8 @@ export function Landing() {
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
             <div className="truncate text-[14px] font-bold">Trackaa</div>
-            {price && <div className="truncate text-[12.5px] text-muted">{price}</div>}
           </div>
-          <CtaButton buy={buy} size="md" />
+          <CtaButton size="md" />
         </div>
       </div>
     </div>
@@ -350,50 +328,27 @@ function Faq({ q, children }: { q: string; children: ReactNode }) {
 
 /* ---------------- calls to action ---------------- */
 
-function CtaButton({ buy, size = "lg", className }: { buy: string | null; size?: "md" | "lg"; className?: string }) {
-  const label = buy ? "Get your access code" : "Create your account";
-  const content = (
-    <>
-      {label} <ArrowRight size={18} strokeWidth={2.5} />
-    </>
-  );
-  return buy ? (
-    <a href={buy} target="_blank" rel="noopener noreferrer" className={cx(buttonClass("primary", size), className)}>
-      {content}
-    </a>
-  ) : (
+function CtaButton({ size = "lg", className }: { size?: "md" | "lg"; className?: string }) {
+  return (
     <Link href="/register/" className={cx(buttonClass("primary", size), className)}>
-      {content}
+      Create your account <ArrowRight size={18} strokeWidth={2.5} />
     </Link>
   );
 }
 
-function CtaLink({ buy, children }: { buy: string | null; children: ReactNode }) {
-  const cls = "font-bold text-ink underline decoration-brand decoration-[3px] underline-offset-4";
-  return buy ? (
-    <a href={buy} target="_blank" rel="noopener noreferrer" className={cls}>
-      {children}
-    </a>
-  ) : (
-    <Link href="/register/" className={cls}>
+function CtaLink({ children }: { children: ReactNode }) {
+  return (
+    <Link href="/register/" className="font-bold text-ink underline decoration-brand decoration-[3px] underline-offset-4">
       {children}
     </Link>
   );
 }
 
-function CtaBlock({ buy, price }: { buy: string | null; price: string | null }) {
+function CtaBlock() {
   return (
     <div className="my-10 flex flex-col items-center gap-3 rounded-card bg-surface-2 px-5 py-7 text-center">
-      <CtaButton buy={buy} className="w-full max-w-sm" />
-      <p className="text-[14px] text-muted">
-        {price && <span className="font-bold text-ink">{price} · </span>}
-        {buy ? "Pay with MoMo or card · " : ""}works on any phone
-      </p>
-      {buy && (
-        <Link href="/register/" className="text-[14px] font-semibold text-ink underline decoration-line decoration-2 underline-offset-4">
-          Already have a code? Create your account
-        </Link>
-      )}
+      <CtaButton className="w-full max-w-sm" />
+      <p className="text-[14px] text-muted">works on any phone</p>
     </div>
   );
 }
